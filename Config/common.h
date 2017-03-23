@@ -28,6 +28,7 @@
 #include "Camera.h"
 #include "UART4.h"
 #include "flow.h"
+#include "AltitudeFilter.h"
 
 extern double systemTime;
 
