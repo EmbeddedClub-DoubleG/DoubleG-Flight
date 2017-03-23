@@ -1,0 +1,6 @@
+Listings/
+Objects/
+*.uvoptx
+JLinkSettings.ini
+JLinkLog.txt
+*.uvguix.*
