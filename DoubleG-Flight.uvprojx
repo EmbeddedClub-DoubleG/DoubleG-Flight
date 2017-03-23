@@ -365,7 +365,7 @@
               <MiscControls></MiscControls>
               <Define>USE_STDPERIPH_DRIVER STM32F4XX</Define>
               <Undefine></Undefine>
-              <IncludePath>.\Config;.\FatFs;.\FWlib\inc;.\FWlib\Include;.\User;.\StartUp;.\HardWareDriver\ADC;.\HardWareDriver\AT45DB;.\HardWareDriver\Camera;.\HardWareDriver\Flow;.\HardWareDriver\GCS_Protocol;.\HardWareDriver\GPS;.\HardWareDriver\IMU;.\HardWareDriver\LED;.\HardWareDriver\LSM303D;.\HardWareDriver\Math;.\HardWareDriver\MPU6500;.\HardWareDriver\MS5611;.\HardWareDriver\PID;.\HardWareDriver\PWM_Input;.\HardWareDriver\PWM_Output;.\HardWareDriver\Quadrotor;.\HardWareDriver\Service;.\HardWareDriver\SPI3;.\HardWareDriver\UART1;.\HardWareDriver\UART4;.\HardWareDriver\Ultrasonic;.\HardWareDriver\USART_DMA</IncludePath>
+              <IncludePath>.\Config;.\FatFs;.\FWlib\inc;.\FWlib\Include;.\User;.\StartUp;.\HardWareDriver\ADC;.\HardWareDriver\AT45DB;.\HardWareDriver\Camera;.\HardWareDriver\Flow;.\HardWareDriver\GCS_Protocol;.\HardWareDriver\GPS;.\HardWareDriver\IMU;.\HardWareDriver\LED;.\HardWareDriver\LSM303D;.\HardWareDriver\Math;.\HardWareDriver\MPU6500;.\HardWareDriver\MS5611;.\HardWareDriver\PID;.\HardWareDriver\PWM_Input;.\HardWareDriver\PWM_Output;.\HardWareDriver\Quadrotor;.\HardWareDriver\Service;.\HardWareDriver\SPI3;.\HardWareDriver\UART1;.\HardWareDriver\UART4;.\HardWareDriver\Ultrasonic;.\HardWareDriver\USART_DMA;.\HardWareDriver\AltitudeFilter</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -622,6 +622,11 @@
               <FileName>Ultrasonic.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\HardWareDriver\Ultrasonic\Ultrasonic.c</FilePath>
+            </File>
+            <File>
+              <FileName>AltitudeFilter.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\AltitudeFilter\AltitudeFilter.c</FilePath>
             </File>
           </Files>
         </Group>
