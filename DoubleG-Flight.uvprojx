@@ -7,7 +7,7 @@
 
   <Targets>
     <Target>
-      <TargetName>Target 1</TargetName>
+      <TargetName>DoubleG-Flight</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
       <TargetOption>
@@ -46,14 +46,14 @@
             <NotGenerated>0</NotGenerated>
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
-          <OutputDirectory>.\</OutputDirectory>
+          <OutputDirectory>.\Objects\</OutputDirectory>
           <OutputName>DoubleG-Flight</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
-          <CreateHexFile>0</CreateHexFile>
+          <CreateHexFile>1</CreateHexFile>
           <DebugInformation>1</DebugInformation>
           <BrowseInformation>1</BrowseInformation>
-          <ListingPath>.\</ListingPath>
+          <ListingPath>.\Listings\</ListingPath>
           <HexFormatSelection>1</HexFormatSelection>
           <Merge32K>0</Merge32K>
           <CreateBatchFile>0</CreateBatchFile>
@@ -147,7 +147,7 @@
             <RestoreSysVw>1</RestoreSysVw>
           </Target>
           <RunDebugAfterBuild>0</RunDebugAfterBuild>
-          <TargetSelection>1</TargetSelection>
+          <TargetSelection>6</TargetSelection>
           <SimDlls>
             <CpuDll></CpuDll>
             <CpuDllArguments></CpuDllArguments>
@@ -161,7 +161,7 @@
             <PeripheralDll></PeripheralDll>
             <PeripheralDllArguments></PeripheralDllArguments>
             <InitializationFile></InitializationFile>
-            <Driver>BIN\UL2CM3.DLL</Driver>
+            <Driver>Segger\JL2CM3.dll</Driver>
           </TargetDlls>
         </DebugOption>
         <Utilities>
@@ -170,12 +170,12 @@
             <UseExternalTool>0</UseExternalTool>
             <RunIndependent>0</RunIndependent>
             <UpdateFlashBeforeDebugging>1</UpdateFlashBeforeDebugging>
-            <Capability>0</Capability>
-            <DriverSelection>-1</DriverSelection>
+            <Capability>1</Capability>
+            <DriverSelection>4099</DriverSelection>
           </Flash1>
           <bUseTDR>1</bUseTDR>
-          <Flash2>BIN\UL2CM3.DLL</Flash2>
-          <Flash3></Flash3>
+          <Flash2>Segger\JL2CM3.dll</Flash2>
+          <Flash3>"" ()</Flash3>
           <Flash4></Flash4>
           <pFcarmOut></pFcarmOut>
           <pFcarmGrp></pFcarmGrp>
@@ -293,17 +293,17 @@
                 <Size>0x0</Size>
               </XRAM>
               <OCR_RVCT1>
-                <Type>0</Type>
+                <Type>1</Type>
                 <StartAddress>0x0</StartAddress>
                 <Size>0x0</Size>
               </OCR_RVCT1>
               <OCR_RVCT2>
-                <Type>0</Type>
+                <Type>1</Type>
                 <StartAddress>0x0</StartAddress>
                 <Size>0x0</Size>
               </OCR_RVCT2>
               <OCR_RVCT3>
-                <Type>0</Type>
+                <Type>1</Type>
                 <StartAddress>0x0</StartAddress>
                 <Size>0x0</Size>
               </OCR_RVCT3>
@@ -313,7 +313,7 @@
                 <Size>0x100000</Size>
               </OCR_RVCT4>
               <OCR_RVCT5>
-                <Type>0</Type>
+                <Type>1</Type>
                 <StartAddress>0x0</StartAddress>
                 <Size>0x0</Size>
               </OCR_RVCT5>
@@ -363,9 +363,9 @@
             <useXO>0</useXO>
             <VariousControls>
               <MiscControls></MiscControls>
-              <Define></Define>
+              <Define>USE_STDPERIPH_DRIVER STM32F4XX</Define>
               <Undefine></Undefine>
-              <IncludePath></IncludePath>
+              <IncludePath>.\Config;.\FatFs;.\FWlib\inc;.\FWlib\Include;.\User;.\StartUp;.\HardWareDriver\ADC;.\HardWareDriver\AT45DB;.\HardWareDriver\Camera;.\HardWareDriver\Flow;.\HardWareDriver\GCS_Protocol;.\HardWareDriver\GPS;.\HardWareDriver\IMU;.\HardWareDriver\LED;.\HardWareDriver\LSM303D;.\HardWareDriver\Math;.\HardWareDriver\MPU6500;.\HardWareDriver\MS5611;.\HardWareDriver\PID;.\HardWareDriver\PWM_Input;.\HardWareDriver\PWM_Output;.\HardWareDriver\Quadrotor;.\HardWareDriver\Service;.\HardWareDriver\SPI3;.\HardWareDriver\UART1;.\HardWareDriver\UART4;.\HardWareDriver\Ultrasonic;.\HardWareDriver\USART_DMA</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -406,7 +406,319 @@
       </TargetOption>
       <Groups>
         <Group>
-          <GroupName>Source Group 1</GroupName>
+          <GroupName>User</GroupName>
+          <Files>
+            <File>
+              <FileName>main.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\User\main.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_it.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\User\stm32f4xx_it.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>FWlib</GroupName>
+          <Files>
+            <File>
+              <FileName>misc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\misc.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_adc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_adc.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_dbgmcu.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_dbgmcu.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_dcmi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_dcmi.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_dma.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_dma.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_exti.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_exti.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_flash.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_gpio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_gpio.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_pwr.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_pwr.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_rcc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_rcc.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_rng.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_rng.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_rtc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_rtc.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_sdio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_sdio.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_spi.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_syscfg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_syscfg.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_tim.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_tim.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_usart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_usart.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_wwdg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FWlib\src\stm32f4xx_wwdg.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>StartUp</GroupName>
+          <Files>
+            <File>
+              <FileName>startup_stm32f4xx.s</FileName>
+              <FileType>2</FileType>
+              <FilePath>.\StartUp\startup_stm32f4xx.s</FilePath>
+            </File>
+            <File>
+              <FileName>system_stm32f4xx.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\StartUp\system_stm32f4xx.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>HardWareDriver</GroupName>
+          <Files>
+            <File>
+              <FileName>STM32ADC.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\ADC\STM32ADC.c</FilePath>
+            </File>
+            <File>
+              <FileName>AT45DB.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\AT45DB\AT45DB.c</FilePath>
+            </File>
+            <File>
+              <FileName>Camera.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\Camera\Camera.c</FilePath>
+            </File>
+            <File>
+              <FileName>flow.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\Flow\flow.c</FilePath>
+            </File>
+            <File>
+              <FileName>GPS.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\GPS\GPS.c</FilePath>
+            </File>
+            <File>
+              <FileName>IMU.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\IMU\IMU.c</FilePath>
+            </File>
+            <File>
+              <FileName>LED.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\LED\LED.c</FilePath>
+            </File>
+            <File>
+              <FileName>LSM303D.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\LSM303D\LSM303D.c</FilePath>
+            </File>
+            <File>
+              <FileName>MPU6500.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\MPU6500\MPU6500.c</FilePath>
+            </File>
+            <File>
+              <FileName>MS5611.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\MS5611\MS5611.c</FilePath>
+            </File>
+            <File>
+              <FileName>PWM_Input.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\PWM_Input\PWM_Input.c</FilePath>
+            </File>
+            <File>
+              <FileName>PWM_Output.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\PWM_Output\PWM_Output.c</FilePath>
+            </File>
+            <File>
+              <FileName>delay.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\Service\delay.c</FilePath>
+            </File>
+            <File>
+              <FileName>IOI2C.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\Service\IOI2C.c</FilePath>
+            </File>
+            <File>
+              <FileName>SPI3.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\SPI3\SPI3.c</FilePath>
+            </File>
+            <File>
+              <FileName>UART1.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\UART1\UART1.c</FilePath>
+            </File>
+            <File>
+              <FileName>UART4.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\UART4\UART4.c</FilePath>
+            </File>
+            <File>
+              <FileName>Ultrasonic.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\Ultrasonic\Ultrasonic.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Quad</GroupName>
+          <Files>
+            <File>
+              <FileName>GCS_Protocol.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\GCS_Protocol\GCS_Protocol.c</FilePath>
+            </File>
+            <File>
+              <FileName>Fmath.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\Math\Fmath.c</FilePath>
+            </File>
+            <File>
+              <FileName>Pid.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\PID\Pid.c</FilePath>
+            </File>
+            <File>
+              <FileName>Quadrotor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\Quadrotor\Quadrotor.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>UART_DMA</GroupName>
+          <Files>
+            <File>
+              <FileName>OSQMem.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\USART_DMA\OSQMem.c</FilePath>
+            </File>
+            <File>
+              <FileName>USART1DMATX.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HardWareDriver\USART_DMA\USART1DMATX.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>FatFs</GroupName>
+          <Files>
+            <File>
+              <FileName>SD_init.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FatFs\SD_init.c</FilePath>
+            </File>
+            <File>
+              <FileName>ff.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FatFs\ff.c</FilePath>
+            </File>
+            <File>
+              <FileName>FAT_driver.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FatFs\FAT_driver.c</FilePath>
+            </File>
+            <File>
+              <FileName>diskio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\FatFs\diskio.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Readme</GroupName>
+          <Files>
+            <File>
+              <FileName>README.txt</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\README.txt</FilePath>
+            </File>
+            <File>
+              <FileName>GCS_readme.txt</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\HardWareDriver\GCS_Protocol\GCS_readme.txt</FilePath>
+            </File>
+            <File>
+              <FileName>IMU_readme.txt</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\HardWareDriver\IMU\IMU_readme.txt</FilePath>
+            </File>
+            <File>
+              <FileName>LED_readme.txt</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\HardWareDriver\LED\LED_readme.txt</FilePath>
+            </File>
+            <File>
+              <FileName>Quad_readme.txt</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\HardWareDriver\Quadrotor\Quad_readme.txt</FilePath>
+            </File>
+          </Files>
         </Group>
       </Groups>
     </Target>
