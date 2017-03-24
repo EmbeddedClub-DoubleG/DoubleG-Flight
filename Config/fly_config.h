@@ -47,8 +47,6 @@
 #define Yingzhang_GCS 0
 #define Captain_GCS 1
 #define SerialDebug 0//update20161227:增加串口调试条件编译
-//用来判断是否使用了BoardB来进行条件编译
-#define BoardB_Enable 0//update20161226:新添加了BoardB的条件编译
 
 #endif
 //------------------End of File----------------------------

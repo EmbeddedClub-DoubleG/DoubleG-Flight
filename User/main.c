@@ -22,15 +22,7 @@ int16_t Math_hz=0;//xiang：记录从上一次上传姿态解算的次数信息�
 double systemTime = 0;
 uint32_t systemTimeLast = 0;
 
-//uint32_t BoardB_lastSendTime;//上次给主板B发送高度信息的时间
-//#define BoardB_sendPeriod 50000//给主板B发送高度信息的周期，单位us
-
-
 #if Yingzhang_GCS
-//------xiang：自制上位机相关变量----
-//#define Mon_Height 0x10
-//#define Mon_No 0x00
-//u8 Mon_Data = Mon_No;//要上传什么数据
 void GCS_Upload(void);
 void GCS_GetCommand(unsigned char PC_comm);	
 #endif
@@ -48,7 +40,6 @@ void Remote_Command(void);
 *******************************************************************************/
 int main(void)
 {
-    // int32_t cameraCount = 0;
 #if Captain_GCS|Yingzhang_GCS
 	unsigned char PC_comm; //PC发送的命令
 #endif
@@ -66,7 +57,6 @@ int main(void)
 	ADC_Voltage_initial();//ADC初始化
 	Initial_UART1(115200L);//主通信接口,uart1用于和上位机通信
 	// Initial_UART3(GPS_Baudrate); //GPS 接口设置	定义于fly_config.h,uart3用于和GPS通信
-	// Initial_UART4(BoardB_Baudrate);//Uart4用于和主板B通信
 	Initial_UART4(115200);
 
 	IIC_Init();	 //初始化I2C接口 
@@ -98,7 +88,6 @@ int main(void)
 
 	LEDRed_OFF();  //关灯
 	system_micrsecond=micros();	//读取系统时间，开始计时
-	// BoardB_lastSendTime=micros();//读取系统时间
 	while(1)//主循环
 	{
 		// update20170113
@@ -132,14 +121,6 @@ int main(void)
 			Servo_Update_Req = 0; //清标志位 等待一下次的更新
 		}
 
-//定时发送高度信号到主板B
-		// if((micros() - BoardB_lastSendTime) > BoardB_sendPeriod)
-		// {
-		// 	//注意：MS5611_Altitude单位是0.01米，是float型
-		// 	Altitude = MS5611_Altitude;
-		// 	BoardB_Sendfloat(Altitude);//发送高度到主板B			
-		// 	BoardB_lastSendTime = micros();
-		// }
 #if Captain_GCS||Yingzhang_GCS
 		if((micros()-system_micrsecond)>upload_time)//是否到了更新 上位机的时间了
 			GCS_Upload();//将姿态数据传给上位机
@@ -151,39 +132,14 @@ int main(void)
 		//上传数据给串口调试助手
 		if((micros()-system_micrsecond)>upload_time)//单位us
 		{
-			
-	// temp = new - old;
-	// MS5611_Debug[0] = temp;
-	// D = D +	  //低通滤波   20hz
-	// 	(ALT_Update_Interval/(ALT_Update_Interval + MS5611_Lowpass))*(temp - D);
-	// MS5611_Debug[1] = D;
-	// MS5611_Debug[2] = temp * 2.0f / MOVAVG_SIZE / ALT_Update_Interval;
-	// MS5611_Debug[3] = temp * 2.0f / MOVAVG_SIZE;
-	// MS5611_Debug[4] = ALT_Update_Interval;
 			char string_to_send1[80]={0};
 			char string_to_send2[80]={0};
-//			short int test[1];
-//			flow_read_data(FLOW_ADDR,0,46,flowdata);
-//			
-//			test[0]=(flowdata[9]<<8)|flowdata[8];//X轴速度
-			
-			//sprintf(string_to_send1,"%4d",test[0]);
-			// sprintf(string_to_send, "\r\ntime %lf came %d\r\n", systemTime,cameraReady);
-//			UART1_Put_String((unsigned char *)string_to_send1);
 
 			sprintf(string_to_send1, "\r\nPitch:%f Target:%f Y_Speed:%d Ymove:%f \r\n",IMU_Pitch,-Target_Pitch,Y_Speed,Ymove);
 			 UART1_Put_String((unsigned char *)string_to_send1);
 			sprintf(string_to_send2, "\r\nRoll:%f Target:%f X_Speed:%d Xmove:%f \r\n",IMU_Roll,Target_Roll,X_Speed,Xmove);
 			 UART1_Put_String((unsigned char *)string_to_send2);
-			
-			
-		
-//			if(systemTime>2.5)
-//			{ 
-//				// UART1_Put_String((unsigned char *)"\r\ncamera start\r\n");				
-//				// Camera_Routine();
-//				cameraCount = 0;
-//			}
+
 			system_micrsecond=micros();
 		}
 #endif
@@ -201,15 +157,10 @@ void UART1_Monitor_PID(uint8_t index){
 
 	switch(index){
 	case 1:
-//	UART1_Report_PID(Stabilize_Roll.target, // ROLL
-//						Stabilize_Roll.current,
-//						//Stabilize_Roll.PID_out);
-//						RollRate.PID_out);
-	UART1_Report_PID(X_Speed, // ROLL
-						Y_Speed,
+	UART1_Report_PID(Stabilize_Roll.target, // ROLL
+						Stabilize_Roll.current,
 						//Stabilize_Roll.PID_out);
-						100);
-						break ;
+						RollRate.PID_out);
 	case 2:
 	UART1_Report_PID(Stabilize_Pitch.target, // pitch
 						Stabilize_Pitch.current,

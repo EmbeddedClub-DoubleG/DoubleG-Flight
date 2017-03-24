@@ -16,6 +16,7 @@ int16_t Math_max(int16_t value1,int16_t value2);
 void Math_init_EXP(void);
 int16_t Math_ThrEXP(int16_t RCThr);
 int16_t Math_AngelEXP(int16_t in);
+float Get_Yaw_Error(float set,float currt);
 
 #endif
 

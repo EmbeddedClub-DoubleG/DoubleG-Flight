@@ -45,4 +45,4 @@ void pidSet(struct Quad_PID* pid, float kp,float ki,float kd);
 void pidSetMeasured(struct Quad_PID* pid, float measured);
 void pidSetTarget_Measure(struct Quad_PID* pid, float target, float measured);
 void pidSetLowPassEnable(struct Quad_PID* pid);
-#endif /* PID_H_ */
+#endif
