@@ -57,12 +57,6 @@ void Get_Tartget_RPY(void)
 	}
 	#if Yingzhang_GCS
 	//ch1增加往右，ch2增加往前，ch4增加往右
-	if(GCSControl_Leftward)		Target_Roll-=50;
-	if(GCSControl_Rightward)	Target_Roll+=50;
-	if(GCSControl_Forward)		Target_Pitch+=50;
-	if(GCSControl_Backward)		Target_Pitch-=50;
-	// if(GCSControl_LeftRotate)	Target_Yaw-=5;
-	// if(GCSControl_RightRotate)	Target_Yaw+=5;
 	#endif
 }
 
