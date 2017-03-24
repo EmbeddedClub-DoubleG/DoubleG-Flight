@@ -1,52 +1,29 @@
 #include "Quadrotor.h"
-#include "common.h"
 #include "Fmath.h"
-#include "math.h"
+// #include "math.h"
 #include "GPS.h"
 #include "GCS_Protocol.h"
+#include "Quad_PID.h"
+#include "Target.h"
 
 volatile uint8_t  Fly_Mode = default_quad; //飞行器的架构，默认十字四轴，见fly_config.h
 volatile int16_t  Yaw_DIRECT = 1;//航向是否取反
 int16_t THROTTLE = MINTHROTTLE, PID_ROLL = 0, PID_PITCH = 0, PID_YAW = 0;
-int16_t PWM_Offset_Roll,PWM_Offset_Pitch,PWM_Offset_Yaw;
 volatile float PID_dt = 0;
 volatile float Quad_Pitch,Quad_Roll,Quad_Yaw,Quad_THR=MINTHROTTLE;//update20161226:添加了Quad_Pitch,Quad_Roll,Quad_Yaw这几个变量，虽然没用到
-float  Target_Roll,Target_Pitch,Target_Yaw,Tartget_hight = 0.0;//Target_Roll,Target_Pitch单位为 x/10=度
 volatile uint8_t Quadrotor_Mode = Quad_Manual; 	//当前的飞行模式，手动，平衡，定点等
-float GPS_PITCH=0,GPS_ROLL=0;
 
 //定高相关变量
-#define Default_Throttle 1470.0f//默认油门
-volatile float Increas_Output_Accumulat=0;//增量式pid的输出的累加
-float Height_PID_Out = 0;
 //光流定点相关全局变量
 volatile float Increas_Xspeed_Accumulat=0;//增量式pid的输出的累加
 volatile float Increas_Yspeed_Accumulat=0;//增量式pid的输出的累加
+float RollAdd,PitchAdd;
 
-#if Yingzhang_GCS
-//update20170113
-//上位机控制四轴目标角度相关变量
-int8_t GCSControl_Forward = 0;
-int8_t GCSControl_Backward = 0;
-int8_t GCSControl_Leftward = 0;
-int8_t GCSControl_Rightward = 0;
-int8_t GCSControl_LeftRotate = 0;
-int8_t GCSControl_RightRotate = 0;
-#endif
 
 /*---------------------内部函数声明------------------------*/
-void Roll_Pitch_Yaw_RatePID(float Rate_roll,float Rate_pitch,float Rate_yaw);
-void Roll_Pitch_Yaw_AnglePID(float Angle_roll,float Angle_pitch,float Angle_yaw);
-void Position_Hold_Reset(void);
-void GPS_Position_Hold(void);
-float Z_Speed_PID(float Speed);
-float Height_PID(float height);
 
-unsigned char Read_Mode(void);
 uint8_t Change_Mode(unsigned char);
 void Led_Quad_Mode(void);
-void Lock_Target_Yaw(void);
-void Get_Tartget_RPY(void);
 
 void Mode_Manual(void);
 void Mode_Level_Lock(void);
@@ -60,13 +37,6 @@ void Mode_Auto_High(void);
 /**************************实现函数********************************************
 *函数原型:		void Quadrotor_Motor_Update(void)
 *功　　能:	    电机转速更新。四轴的关键控制部分.
-PWM输入定义：
-	PWM_Input_CH1 目标横滚角度输入  1500us为0度
-	PWM_Input_CH2 目标俯仰角度输入  1500us为0度
-	PWM_Input_CH3 油门量输入
-	PWM_Input_CH4 航向输入
-	PWM_Input_CH5、PWM_Input_CH6 飞行模式控制
-	油门量CH3大于1500us时，进入电调行程设置模式
 输出的结果都在	Set_PWMOuput_CH1-6 直接输出PWM
 *******************************************************************************/
 void Quadrotor_Motor_Update(void)
@@ -120,19 +90,6 @@ void Quadrotor_Motor_Update(void)
 }
 
 /**************************实现函数********************************************
-*函数原型:	void PWM_Save_Offset(void)
-*功　　能:	上位机标记中立值
-*******************************************************************************/
-void PWM_Save_Offset(void)
-{
-   PWM_Offset_Roll = PWM_Input_CH1 + PWM_Offset_Roll - 1500;
-   PWM_Offset_Pitch = PWM_Input_CH2 + PWM_Offset_Pitch - 1500; 
-   PWM_Offset_Yaw = PWM_Input_CH4 + PWM_Offset_Yaw - 1500;
-   AT45DB_Write_config();
-   //LED_Set_Blink(Blue,50,50,4);
-}
-
-/**************************实现函数********************************************
 *函数原型:		void Initial_Quadrotor_Math(void)
 *功　　能:	    初始化四轴的数据参数。
 读取PID参数，以便在四轴控制中进行运算
@@ -178,9 +135,6 @@ void Initial_Quadrotor_Math(void){
 	pidInit(&Climb,     	Config.Climb_High_P,
 							Config.Climb_High_I,
 							Config.Climb_High_D);
-	pidInit(&Z_Speed,     	Config.Climb_High_P,//update20170110
-							Config.Climb_High_I,
-							Config.Climb_High_D);
 	pidInit(&Position_Hold, Config.Position_Hold_P,
 							Config.Position_Hold_I,
 							Config.Position_Hold_D);
@@ -192,7 +146,6 @@ void Initial_Quadrotor_Math(void){
 	pidSetLowPassEnable(&PitchRate);
 	pidSetLowPassEnable(&YawRate);
 	pidSetLowPassEnable(&Climb);
-	pidSetLowPassEnable(&Z_Speed);//update20170110
 	pidSetIntegralLimit(&AutoHigh_THR , 30.0f);//xiang:本来是10
 	pidSetIntegralLimit(&Climb , 200.0f);//xiang:本来是100
 	pidSetIntegralLimit(&Z_Speed , 100.0f);//update20170110
@@ -221,564 +174,19 @@ void PWM_Output_ESC_Calibration(void) {
 	Set_PWMOuput_CH2(PWM_Input_CH3);
 	Set_PWMOuput_CH3(PWM_Input_CH3);
 	Set_PWMOuput_CH4(PWM_Input_CH3);
+	PWM_Output_CH1 = PWM_Input_CH3;
+	PWM_Output_CH2 = PWM_Input_CH3;
+	PWM_Output_CH3 = PWM_Input_CH3;
+	PWM_Output_CH4 = PWM_Input_CH3;
 
-	if((Fly_Mode == Y6)||(Fly_Mode == HEX6X)||(Fly_Mode == OCTOX8)){
+	if((Fly_Mode == Y6)||(Fly_Mode == HEX6X)||(Fly_Mode == HEX6)){
 	Set_PWMOuput_CH5(PWM_Input_CH3);
 	Set_PWMOuput_CH6(PWM_Input_CH3);
+	PWM_Output_CH5 = PWM_Input_CH3;
+	PWM_Output_CH6 = PWM_Input_CH3;
 	}
 }
 
-//------------俯仰和横滚PID---------------------------------------
-/**
-	以十字模式 说明四轴角度平衡原理
-	四轴抬头时(前高后低)，pitch > 0  前倾时Gyroy < 0  ,此时应该： 前电机减速，后电机加速，
-	四轴低头时(前低后高)，pitch < 0  后倾时Gyroy > 0  ,此时应该： 前电机加速，后电机减速
-
-	四轴右倾时(左高右低)，Roll > 0   右倾时Gyrox > 0  ,此时应该： 左电机减速，右电机加速
-	四轴左倾时(左低右高)，Roll < 0	 左倾时Gyrox < 0	,此时应该： 左电机加速，右电机减速
-**/
-/**************************实现函数********************************************
-	*函数原型:	void Roll_Pitch_Yaw_RatePID(float Rate_roll,float Rate_pitch,float Rate_yaw)
-	*功　　能:  角速率控制PID
-*******************************************************************************/
-void Roll_Pitch_Yaw_RatePID(float Rate_roll,float Rate_pitch,float Rate_yaw){
-	//ROLL
-	pidSetTarget(&RollRate, Rate_roll*100.0f);
-	pidUpdate(&RollRate ,IMU_GYROx*100.0f, PID_dt);
-	RollRate.PID_out *= 0.1f;
-	RollRate.PID_out = Math_fConstrain(RollRate.PID_out,-350.0f,+350.0f);  //限制控制PWM信号的幅度
-	//PITCH
-	pidSetTarget(&PitchRate, Rate_pitch*100.0f);
-	pidUpdate(&PitchRate ,IMU_GYROy*100.0f , PID_dt);
-	PitchRate.PID_out *= 0.1f;
-	PitchRate.PID_out = Math_fConstrain(PitchRate.PID_out,-350.0f,+350.0f);  //限制控制PWM信号的幅度
-	//YAW
-	pidSetTarget(&YawRate, Rate_yaw*100.0f);
-	pidUpdate(&YawRate ,IMU_GYROz*100.0f , PID_dt);
-	YawRate.PID_out *= 0.1f;
-	YawRate.PID_out = Math_fConstrain(YawRate.PID_out,-150.0f,+150.0f);  //限制控制PWM信号的幅度    
-}
-
-/**************************实现函数********************************************
-	*函数原型:	void Roll_Pitch_Yaw_AnglePID(float Angle_roll,float Angle_pitch,float Angle_yaw)
-	*功　　能:  角度控制PID
-	这里就是一个串级pid算法，角速度内环，角度外环，角度pid输出作为角速度pid输入（即目标值）
-*******************************************************************************/
-
-void Roll_Pitch_Yaw_AnglePID(float Angle_roll,float Angle_pitch,float Angle_yaw){
-	float RateTarget ,yaw_error;
-	//ROLL
-	pidSetTarget_Measure(&Stabilize_Roll, Angle_roll*100.0f,IMU_Roll*100.0f);	 //目标角度
-	Stabilize_Roll.merror = Math_fConstrain(Stabilize_Roll.merror,-4500.0f,+4500.0f);
-	RateTarget = pidUpdate(&Stabilize_Roll ,IMU_Roll*100.0f , PID_dt);
-	pidSetTarget(&RollRate, RateTarget);
-	pidUpdate(&RollRate ,IMU_GYROx*100.0f , PID_dt);
-	RollRate.PID_out *= 0.1f;
-	RollRate.PID_out = Math_fConstrain(RollRate.PID_out,-350.0f,+350.0f);  //限制控制PWM信号的幅度
-	//PITCH
-	pidSetTarget_Measure(&Stabilize_Pitch, Angle_pitch*100.0f,-IMU_Pitch*100.0f);
-	Stabilize_Pitch.merror = Math_fConstrain(Stabilize_Pitch.merror,-4500.0f,+4500.0f);
-	RateTarget = pidUpdate(&Stabilize_Pitch ,-IMU_Pitch*100.0f , PID_dt);
-	pidSetTarget(&PitchRate, RateTarget);
-	pidUpdate(&PitchRate ,IMU_GYROy*100.0f , PID_dt);
-	PitchRate.PID_out *= 0.1f;
-	PitchRate.PID_out = Math_fConstrain(PitchRate.PID_out,-350.0f,+350.0f);  //限制控制PWM信号的幅度
-	//YAW
-	pidSetTarget(&Stabilize_Yaw, Angle_yaw*100.0f);
-	pidSetMeasured(&Stabilize_Yaw, IMU_Yaw*100.0f);	 
-	yaw_error = -Get_Yaw_Error(Angle_yaw , IMU_Yaw);	//目标角度
-	yaw_error *= 100.0f;
-	yaw_error = Math_fConstrain(yaw_error,-4500.0f,+4500.0f);
-	RateTarget = pidUpdate_err(&Stabilize_Yaw ,yaw_error, PID_dt);
-	pidSetTarget(&YawRate, RateTarget);
-	pidUpdate(&YawRate ,IMU_GYROz*100.0f , PID_dt);
-	YawRate.PID_out *= 0.1f;
-	YawRate.PID_out = Math_fConstrain(YawRate.PID_out,-150.0f,+150.0f);  //限制控制PWM信号的幅度
-}
-
-/**************************实现函数********************************************
-	*函数原型:		float Z_Speed_PID(float Speed)
-	*功　　能:	  以固定速度Speed降落 单位米/秒
-	输入：Speed：目标速度
-	单位统一为cm和cm/s
-*******************************************************************************/
-float Z_Speed_PID(float Speed)
-{
-//----使用增量式pid的代码---
-	// float measured;
-	// pidSetKp(&Z_Speed, 0.75f);	    //1.0
-	// pidSetKi(&Z_Speed, 0.0f);	     //1.0
-	// pidSetKd(&Z_Speed, 0.0f);	     //2.5
-	// measured = MS5611BA_Get_D() / 100.0f; //  单位m/s
-	// Z_Speed.merror = Speed - measured;
-	// IncreasingPID(&Z_Speed, Z_Speed.merror);
-	// Z_Speed.PID_out = Math_fConstrain(Z_Speed.PID_out, -50.0f, -15.0f);
-	// return Z_Speed.PID_out;
-
-//-----使用简单的pid的代码----
-	// float measured ;	
-	// measured = MS5611BA_Get_D();//  单位厘米
-	// pidSetTarget_Measure(&Climb, Speed,measured);
-	// //Climb.merror = Math_fConstrain(Climb.merror,-30.0f,+30.0f);
-	// pidUpdate(&Climb ,measured , PID_dt);
-	// Climb.PID_out = Math_fConstrain(Climb.PID_out,-150.0f,150.0f);
-	// return Climb.PID_out;
-
-//使用增量式PID的代码
-	// static float Increas_Output_Accumulat=0;//增量式pid的输出的累加
-	// pidSetTarget_Measure(&Climb,Speed,MS5611BA_Get_D()/100.0f);
-	// Increas_Output_Accumulat += IncreasingPID(&Climb ,Climb.merror);
-	// //Increas_Output_Accumulat = Math_fConstrain(Increas_Output_Accumulat,-150.0f,150.0f);
-	// return Increas_Output_Accumulat;
-	
-//20161125从HeightPID裁剪的代码
-	float ClimbTarget;
-	float THR_err;
-	static float z_rate_error = 0;
-	static uint32_t last_call_us = 0;
-	
-	float Interval_dt = 0;
-	uint32_t now_time = micros();
-	if(now_time - last_call_us > 100000 ){ //超过100ms没有调用这个程序了。
-		z_rate_error = 0;
-		ClimbTarget = 0;
-	}
-	
-	//如果要位置式PID就用这行
-	// if(now_time - last_call_us < 20000 )return Climb.PID_out; //控制高度的更新速率为50hz
-	//如果要增量式PID就用这行
-	if(now_time - last_call_us < 20000 )return Increas_Output_Accumulat; //控制高度的更新速率为50hz
-	
-	Interval_dt = (float)(now_time - last_call_us)/1000000.0f;//s
-	last_call_us = now_time;
-	
-	ClimbTarget = Speed*100.0f;
-	ClimbTarget = Math_fConstrain(ClimbTarget,-200.0f,+200.0f);	
-	pidSetTarget_Measure(&Climb,ClimbTarget,MS5611BA_Get_D());
-	z_rate_error = z_rate_error + //低通滤波。 2Hz
-		(Interval_dt / (0.0795775f + Interval_dt)) * (Math_fConstrain(Climb.merror, -200.0f , 200.0f) - z_rate_error);
-	z_rate_error = Math_fConstrain(Climb.merror, -200.0f , 200.0f);
-	//如果要用位置式pid就用这三行
-	// pidUpdate_err(&Climb ,z_rate_error, ALT_Update_Interval);//速度内环
-	// Climb.PID_out = Math_fConstrain(Climb.PID_out,1300-Default_Throttle,1550-Default_Throttle);
-	// return Climb.PID_out;
-
-	//如果要用增量式pid就用这三行
-	THR_err = IncreasingPID(&Climb ,z_rate_error);
-	//THR_err = Math_fConstrain(THR_err,-0.01f,+0.01f);	
-	Increas_Output_Accumulat+=THR_err;
-	Increas_Output_Accumulat = Math_fConstrain(Increas_Output_Accumulat,1300-Default_Throttle,1550-Default_Throttle);
-	return Increas_Output_Accumulat;
-
-}
-/**************************实现函数********************************************
-	*函数原型:	float Height_PID(float height)
-	*功　　能:  高度控制PID 
-	输入：height：目标高度m
-	统一单位为cm和cm/s
-*******************************************************************************/
-float Height_PID(float height)
-{
-//营长的代码
-    // static float PID_out = 0;
-    // static float ClimbTarget;
-    // float alt_err, z_accel_meas;
-    // static float z_rate_error = 0;  // 垂直加速度，cm
-    // static float z_accel_error = 0; //
-    // static uint32_t last_call_us = 0;
-    // float Interval_dt = 0;
-    // uint32_t now = micros();
-
-    // //以下都是我加的
-    // static float alt[3] = {0};
-    // float alt_current = 0;
-    // static float last_PID_out = 0;
-
-    // //需要先进行1G重力加速度值的采集。保存在AT45DB161
-    // if (Config.ACC_z_zero == 0.0f)
-	// 	return 0; //没有初始化重力加速度值。退出
-    // if ((Config.ACC_z_zero < 8.8f) || (Config.ACC_z_zero > 10.8f))
-	// 	return 0; //重力标定错误。应该在9.8附近
-
-    // if (now - last_call_us > 100000)
-    // { //超过100ms没有调用这个程序了。
-	// 	z_rate_error = 0;
-	// 	z_accel_error = 0;
-	// 	ClimbTarget = 0;
-	// 	alt[2] = alt[1] = alt[0] = 0;
-	// 	PID_out = 0;
-	// 	last_PID_out = 0;
-    // }
-    // if (now - last_call_us < 20000)
-	// 	return (int16_t)Climb.PID_out; //控制高度的更新速率为50hz
-
-    // Interval_dt = (float)(now - last_call_us) / 1000000.0f;
-    // last_call_us = now;
-    // pidSetTarget_Measure(&AutoHigh_THR, height, GetAltitude() / 100.0f);
-
-    // alt[2] = alt[1];
-    // alt[1] = alt[0];
-    // alt[0] = GetAltitude();
-    // alt_current = (alt[2] + alt[1] + alt[0]) / 3;
-    // alt_err = height * 100.0f - alt_current;		 // 高度误差  cm
-    // alt_err = Math_fConstrain(alt_err, -100.0f, 100.0f); //限制爬升率
-    // //alt_err=alt_err*100;
-
-    // AutoHigh_THR.merror = alt_err;
-    // AutoHigh_THR.outP = AutoHigh_THR.Kp * alt_err;
-    // AutoHigh_THR.Integrator += AutoHigh_THR.Ki * alt_err;
-    // AutoHigh_THR.outI = Math_fConstrain(AutoHigh_THR.Integrator, -0.2f, +0.2f);
-    // AutoHigh_THR.outD = AutoHigh_THR.Kd * (AutoHigh_THR.merror - AutoHigh_THR.last_error);
-    // AutoHigh_THR.last_error = AutoHigh_THR.merror;
-    // AutoHigh_THR.PID_out = AutoHigh_THR.outP + AutoHigh_THR.outI + AutoHigh_THR.outD;
-    // ClimbTarget = AutoHigh_THR.PID_out;
-
-    // //		ClimbTarget = pidUpdate_err(&AutoHigh_THR ,
-    // //				            alt_err , // cm/s 改  原先是z_rate_error
-    // //					    Interval_dt);	//高度计更新间隔 ALT_Update_Interval和Interval_dt   不知道用哪个，都试试吧
-    // //z_accel_meas = (acc_vector - Config.ACC_z_zero) * 100.0f; //[m/s^2 -> cm/s^2]
-    // ClimbTarget = Math_fConstrain(ClimbTarget, -0.1f, +0.1f);
-    // PID_out += ClimbTarget;
-    // PID_out = Math_fConstrain(PID_out, 0.0f, 100.0f); //油门基础值给1000；KP一定要给小。0.1左右吧，还得看看PIDupgrade_err里积分的上下行   0.15  0.005  1
-    // //PID_out=last_PID_out+(PID_out-last_PID_out)*z_accel_meas/3000;
-    // last_PID_out = PID_out; //写滤波时需要用到
-    // //	ClimbTarget = Math_fConstrain(ClimbTarget,-80.0f,+120.0f);//加大
-    // //	Climb.current = (Climb.merror-alt_err)/ALT_Update_Interval;//改
-    // //	pidUpdate_err(&Climb ,ClimbTarget-Climb.current, ALT_Update_Interval);//改
-    // //PID_out=PID_out/100.0;
-    // Climb.PID_out = PID_out;
-    // return (int16_t)Climb.PID_out; //改
-
-    //使用增量式单级高度pid的代码
-    // 	pidSetTarget_Measure(&AutoHigh_THR,height*100.0f,GetAltitude());
-    // 	Increas_Output_Accumulat += IncreasingPID(&AutoHigh_THR ,AutoHigh_THR.merror);
-    // 	Increas_Output_Accumulat = Math_fConstrain(Increas_Output_Accumulat,-150.0f,150.0f);
-    // 	return Increas_Output_Accumulat;
-
-// 使用位置式高度PID串联增量式/位置式速度PID的代码
-	// // 电赛专用330机架适用pid（仅测试了增量式pid，位置式pid理论上一样）：
-	// // 高度
-	// // kp:0.6
-	// // ki:0
-	// // kd:0
-	// // 速度
-	// // kp:0.7
-	// // ki:0.01
-	// // kd:0.1
-	// float ClimbTarget;
-	// float THR_err;
-	// static float alt_err = 0;
-	// static float z_rate_error = 0;
-	// static uint32_t last_call_us = 0;
-
-	// float Interval_dt = 0;
-	// uint32_t now_time = micros();
-	// if(now_time - last_call_us > 100000 ){ //超过100ms没有调用这个程序了。
-	// 	z_rate_error = 0;
-	// 	alt_err=0;
-	// 	ClimbTarget = 0;
-	// }
-
-	// //如果要位置式PID就用这行
-    // // if(now_time - last_call_us < 20000 )return Climb.PID_out; //控制高度的更新速率为50hz
-	// //如果要增量式PID就用这行
-	// if(now_time - last_call_us < 20000 )return Increas_Output_Accumulat; //控制高度的更新速率为50hz
-
-	// Interval_dt = (float)(now_time - last_call_us)/1000000.0f;//s
-	// last_call_us = now_time;
-
-	// // pidSetTarget_Measure(&AutoHigh_THR,height*100.0f,GetAltitude());//update20161227
-	// pidSetTarget_Measure(&AutoHigh_THR,height*100.0f,MS5611_Altitude);
-	// alt_err = alt_err    //低通滤波。 2Hz
-	// 	+ (Interval_dt / (0.0795775f + Interval_dt)) * (Math_fConstrain(AutoHigh_THR.merror , -50.0f , 100.0f) - alt_err);
-	// ClimbTarget = pidUpdate_err(&AutoHigh_THR , //climbtarget单位为cm/s
-	// 							alt_err ,
-	// 							ALT_Update_Interval);	//高度计更新间隔
-	// ClimbTarget = Math_fConstrain(ClimbTarget,-60.0f,+60.0f);
-	// // pidSetTarget_Measure(&Climb,ClimbTarget,GetZSpeed());//update20161227
-	// pidSetTarget_Measure(&Climb,ClimbTarget,MS5611BA_Get_D());
-	// z_rate_error = z_rate_error + //低通滤波。 2Hz
-	// 	(Interval_dt / (0.0795775f + Interval_dt)) * (Math_fConstrain(Climb.merror, -100.0f , 100.0f) - z_rate_error);
-
-    // //如果要用位置式pid就用这三行
-	// pidUpdate_err(&Climb ,z_rate_error, ALT_Update_Interval);//速度内环
-	// Climb.PID_out = Math_fConstrain(Climb.PID_out,1300-Default_Throttle,1550-Default_Throttle);
-	// // Height_PID_Out = Height_PID_Out + (Interval_dt / (0.0795775f + Interval_dt)) * Climb.PID_out;
-	// return Climb.PID_out;
-
-    //如果要用增量式pid就用这几行
-	// THR_err = IncreasingPID(&Climb, z_rate_error, ALT_Update_Interval);
-	// THR_err = Math_fConstrain(THR_err,-0.5f,+0.5f);
-	// Increas_Output_Accumulat+=THR_err;
-	// Increas_Output_Accumulat = Math_fConstrain(Increas_Output_Accumulat,1350-Default_Throttle,1600-Default_Throttle);
-	// return Increas_Output_Accumulat;
-
-//使用pid输出累加
-    //	//static float Increas_Output_Accumulat=0;//增量式pid的输出的累加
-    //	float ClimbTarget;
-    //	float THR_err;
-    //	static float alt_err = 0;
-    //	static float z_rate_error = 0;
-    //	static uint32_t last_call_us = 0;
-    //
-    //	float Interval_dt = 0;
-    //	uint32_t now_time = micros();
-    //	if(now_time - last_call_us > 100000 ){ //超过100ms没有调用这个程序了。
-    //		z_rate_error = 0;
-    //		alt_err=0;
-    //		ClimbTarget = 0;
-    //	}
-    //	if(now_time - last_call_us < 20000 )return Increas_Output_Accumulat; //控制高度的更新速率为50hz
-    //	Interval_dt = (float)(now_time - last_call_us)/1000000.0f;//s
-    //	last_call_us = now_time;
-    //
-    //	pidSetTarget_Measure(&AutoHigh_THR,height*100.0f,MS5611_Altitude);
-    //	alt_err = alt_err    //低通滤波。 2Hz
-    //		+ (Interval_dt / (0.0795775f + Interval_dt)) * (Math_fConstrain(AutoHigh_THR.merror , -100.0f , 100.0f) - alt_err);
-    //	ClimbTarget = pidUpdate_err(&AutoHigh_THR , //climbtarget单位为cm/s
-    //								alt_err ,
-    //								ALT_Update_Interval);	//高度计更新间隔
-    //	ClimbTarget = Math_fConstrain(ClimbTarget,-100.0f,+100.0f);
-    //	pidSetTarget_Measure(&Climb,ClimbTarget,MS5611BA_Get_D());
-    //	z_rate_error = z_rate_error + //低通滤波。 2Hz
-    //		(Interval_dt / (0.0795775f + Interval_dt)) * (Math_fConstrain(Climb.merror, -100.0f , 100.0f) - z_rate_error);
-
-    //	pidUpdate_err(&Climb ,z_rate_error, ALT_Update_Interval);//速度内环
-    //	Climb.PID_out = Math_fConstrain(Climb.PID_out,-20.0f,30.0f);
-    //	Increas_Output_Accumulat+=Climb.PID_out;
-    //	Increas_Output_Accumulat = Math_fConstrain(Increas_Output_Accumulat,1300-Default_Throttle,1550-Default_Throttle);
-    //	return Increas_Output_Accumulat;
-//使用三级串联pid
-	// Z_Speed是高度pid，AutoHigh_THR是速度pid，Climb是加速度pid
-	// float ClimbTarget;
-	// float THR_err;
-	// static float alt_err = 0;
-	// static float z_rate_error = 0;
-	// static float z_accel_error = 0;
-	// static uint32_t last_call_us = 0;
-
-	// float Interval_dt = 0;
-	// uint32_t now_time = micros();
-	// if(now_time - last_call_us > 100000 ){ //超过100ms没有调用这个程序了。
-	// 	z_rate_error = 0;
-	// 	alt_err=0;
-	// 	ClimbTarget = 0;
-	// }
-
-	// if(now_time - last_call_us < 20000 )return Climb.PID_out; //控制高度的更新速率为50hz
-
-	// Interval_dt = (float)(now_time - last_call_us)/1000000.0f;//s
-	// last_call_us = now_time;
-
-	// pidSetKp(&Z_Speed, 0.7);
-	// pidSetKi(&Z_Speed, 0.0);
-	// pidSetKd(&Z_Speed, 0.0);
-	// pidSetTarget_Measure(&Z_Speed,height*100.0f,MS5611_Altitude);
-	// // if(Z_Speed.merror>3.0f||Z_Speed.merror<-3.0f)
-	// {
-	// 	alt_err = alt_err    //低通滤波。 2Hz
-	// 		+ (Interval_dt / (0.0795775f + Interval_dt)) * (Math_fConstrain(Z_Speed.merror , -50.0f , 100.0f) - alt_err);
-	// 	pidUpdate_err(&Z_Speed, alt_err, PID_dt);
-	// }
-	// pidSetTarget_Measure(&AutoHigh_THR,Z_Speed.PID_out,MS5611BA_Get_D());
-	// // if(AutoHigh_THR.merror>5.0f||AutoHigh_THR.merror<-5.0f)
-	// {
-	// 	z_rate_error = z_rate_error + //低通滤波。 2Hz
-	// 		(Interval_dt / (0.0795775f + Interval_dt)) * (Math_fConstrain(AutoHigh_THR.merror, -100.0f , 100.0f) - z_rate_error);
-	// 	pidUpdate_err(&AutoHigh_THR ,z_rate_error, PID_dt);//速度内环
-	// }
-	// pidSetTarget_Measure(&Climb,AutoHigh_THR.PID_out,(acc_vector - Config.ACC_z_zero) * 100.0f);
-	// // if(Climb.merror>10.0f||Climb.merror<-10.0f)
-	// {
-	// 	z_accel_error = z_accel_error + //低通滤波。 2Hz
-	// 		(Interval_dt / (0.0795775f + Interval_dt)) * (Math_fConstrain(Climb.merror, -200.0f , 200.0f) - z_accel_error);
-	// 	pidUpdate_err(&Climb ,z_accel_error, PID_dt);//加速度内环
-
-	// 	Climb.PID_out = Math_fConstrain(Climb.PID_out,1300-Default_Throttle,1550-Default_Throttle);
-	// }
-	// return Climb.PID_out;
-//
-	float ClimbTarget;
-	float THR_err;
-	static float alt_err = 0;
-	static float z_rate_error = 0;
-	static uint32_t last_call_us = 0;
-
-	float Interval_dt = 0;
-	uint32_t now_time = micros();
-	if(now_time - last_call_us > 100000 ){ //超过100ms没有调用这个程序了。
-		z_rate_error = 0;
-		alt_err=0;
-		ClimbTarget = 0;
-	}
-
-	//如果要位置式PID就用这行
-	// if(now_time - last_call_us < 20000 )return Climb.PID_out; //控制高度的更新速率为50hz
-	//如果要增量式PID就用这行
-	if(now_time - last_call_us < 20000 )return Increas_Output_Accumulat; //控制高度的更新速率为50hz
-
-	Interval_dt = (float)(now_time - last_call_us)/1000000.0f;//s
-	last_call_us = now_time;
-
-	pidSetTarget_Measure(&AutoHigh_THR,height*100.0f,MS5611_Altitude);
-	alt_err = alt_err    //低通滤波。 2Hz
-		+ (Interval_dt / (0.0795775f + Interval_dt)) * (Math_fConstrain(AutoHigh_THR.merror , -150.0f , 100.0f) - alt_err);
-	ClimbTarget = pidUpdate_err(&AutoHigh_THR , //climbtarget单位为cm/s
-								alt_err ,
-								ALT_Update_Interval);	//高度计更新间隔  高度外环
-	ClimbTarget = Math_fConstrain(ClimbTarget,-200.0f,+200.0f); //高度外环
-	pidSetTarget_Measure(&Climb,ClimbTarget,MS5611BA_Get_D());
-	z_rate_error = z_rate_error + //低通滤波。 2Hz
-		(Interval_dt / (0.0795775f + Interval_dt)) * (Math_fConstrain(Climb.merror, -200.0f , 200.0f) - z_rate_error);
-
-	//如果要用位置式pid就用这三行
-	// pidUpdate_err(&Climb ,z_rate_error, ALT_Update_Interval);//速度内环
-	// Climb.PID_out = Math_fConstrain(Climb.PID_out,1300-Default_Throttle,1550-Default_Throttle);
-	// return Climb.PID_out;
-
-	//如果要用增量式pid就用这三行
-	THR_err = IncreasingPID(&Climb ,z_rate_error);
-	// THR_err = Math_fConstrain(THR_err,-3.0f,+3.0f);
-	Increas_Output_Accumulat+=THR_err;
-  	// Increas_Output_Accumulat = Math_fConstrain(Increas_Output_Accumulat,1300-Default_Throttle,1550-Default_Throttle);
-	Increas_Output_Accumulat = Math_fConstrain(Increas_Output_Accumulat,1300-Default_Throttle,1580-Default_Throttle);
-	return Increas_Output_Accumulat;
-}
-
-//-----------------------------------------------------------------------------
-/// Low pass filter cut frequency for derivative calculation.
-	static const float Hold_filter = 7.9577e-3;
-		// Examples for _filter:
-		// f_cut = 10 Hz -> _filter = 15.9155e-3
-		// f_cut = 15 Hz -> _filter = 10.6103e-3
-		// f_cut = 20 Hz -> _filter =  7.9577e-3
-		// f_cut = 25 Hz -> _filter =  6.3662e-3
-		// f_cut = 30 Hz -> _filter =  5.3052e-3
-	float Position_Hold_i[2]={0.0f,0.0f};
-	float Hold_last_error[2]={0.0f,0.0f};
-	float Hold_last_d[2]={0.0f,0.0f};
-	float GPS_Hold_Angle[2]={0.0f,0.0f};
-	float Smooth_Ang[2]={0.0f,0.0f};
-
-	float Wrap_Ang(float ang) {
-	if (ang > 18000)  ang -= 36000;
-	if (ang < -18000) ang += 36000;
-	return ang;
-	}
-/**************************实现函数********************************************
-	*函数原型:	void Position_Hold_Reset(void)
-	*功　　能:  
-*******************************************************************************/
-void Position_Hold_Reset(void) {
-	uint8_t	axis ;
-	for (axis = 0; axis < 2; axis ++) {
-	Position_Hold_i[axis] = 0.0f;
-	Hold_last_error[axis] = 0.0f;
-	Hold_last_d[axis] = 0.0f;
-	GPS_Hold_Angle[axis] = 0.0f;
-	Smooth_Ang[axis] = 0.0f;
-	}
-	GPS_PITCH = 0.0f;
-	GPS_ROLL = 0.0f;
-}
-/**************************实现函数********************************************
-	*函数原型:	void GPS_Position_Hold(void)
-	*功　　能:  
-*******************************************************************************/
-void GPS_Position_Hold(void)
-{
-    float Error[2], target_speed, speed_error[2], tmp;
-    float p, i, d, out, dist = 0;
-    float sin_yaw = sin(IMU_Yaw * 0.0174532925f); //机头的指向
-    float cos_yaw = cos(IMU_Yaw * 0.0174532925f); //先将角度转成弧度 再计算cos
-    uint8_t axis;
-
-    dist = GPS_Distance(Latitude_GPS,
-			Longitude_GPS,
-			Home_Latitude,
-			Home_Longitude);
-    //计算四轴当前的位置  与家点的偏差。
-    //Error[_X] 表示经度上的偏差
-    //Error[_Y] 表示纬度上的偏差
-    Error[_X] = (Longitude_GPS - Home_Longitude) * cos(((Home_Latitude + Latitude_GPS) / 2) * 0.0174532925f); // X Error
-    Error[_Y] = Latitude_GPS - Home_Latitude;								      // Y Error
-
-    for (axis = 0; axis < 2; axis++)
-    {							    //计算目标角度
-	target_speed = 0.11f * Error[axis];		    // calculate desired speed from lon error
-	speed_error[axis] = target_speed - now_speed[axis]; // calc the speed error
-	speed_error[axis] *= 10000000.0f;		    //以度为单位 显得偏差太小了，我们希望放大偏差
-	//P
-	p = Position_Hold.Kp * speed_error[axis];
-	//I	   GPS_Period 为GPS位置更新的时间间隔
-	Position_Hold_i[axis] += (speed_error[axis] + Error[axis]) * Position_Hold.Ki * GPS_Period;
-	i = Math_fConstrain(Position_Hold_i[axis], -2000.0f, +2000.0f);
-	//D
-	tmp = (Error[axis] - Hold_last_error[axis]) / GPS_Period;
-	//滤波
-	d = Hold_last_d[axis] + (tmp - Hold_last_d[axis]) * (GPS_Period / (Hold_filter + GPS_Period));
-	d *= Position_Hold.Kd;
-	d = Math_fConstrain(d, -2000.0f, 2000.0f);
-
-	Hold_last_error[axis] = Error[axis];
-	Hold_last_d[axis] = tmp;
-
-	out = p + i + d;
-
-	//GPS_Hold_Angle[axis] = Math_fConstrain(out, -3000.0, +3000.0); 	// +-30 度
-	GPS_Hold_Angle[axis] = Math_fConstrain(out, -1000.0f, +1000.0f); // +-10 度
-    }
-
-    //平滑处理
-    Smooth_Ang[_X] += Math_fConstrain(Wrap_Ang(GPS_Hold_Angle[_X] - Smooth_Ang[_X]), -20.0, +20.0);
-    Smooth_Ang[_Y] += Math_fConstrain(Wrap_Ang(GPS_Hold_Angle[_Y] - Smooth_Ang[_Y]), -20.0, +20.0);
-
-    /*
-  Smooth_Ang[_X] , Smooth_Ang[_Y] 对应的是以四轴指向正北的值。也就是YAW =0 时的值
-  我们需要将它映射到四轴当前的航向上。
-  */
-    //ROLL
-    GPS_ROLL = (Smooth_Ang[_X] * cos_yaw - Smooth_Ang[_Y] * sin_yaw) / 10.0f;
-    //PITCH
-    GPS_PITCH = (Smooth_Ang[_X] * sin_yaw + Smooth_Ang[_Y] * cos_yaw) / 10.0f;
-	#if Captain_GCS
-    UART1_ReportTarget( //xiang:注意这里给上位机上传了数据
-						Home_Longitude * 1000000,
-						Home_Latitude * 1000000,
-						AutoHigh_THR.target * 10,
-						dist * 10,
-						GPS_ROLL,
-						GPS_PITCH);
-	#endif
-}
-
-/**************************实现函数********************************************
-	*函数原型:	unsigned char Read_Mode(void)
-	*功　　能:  读取PWM5\PWM6输入值，确定飞控的工作模式
-	输出参数：飞行模式标识
-*******************************************************************************/
-unsigned char Read_Mode(void)
-{
-	if(PWM_Input_CH6 < (int16_t)(PWM_Input_Offset-100))//CH6小于 1400us
-	{
-		if(PWM_Input_CH5 < (int16_t)(PWM_Input_Offset-100))//CH5小于 1400us
-		//左下右上：
-			return Quad_Level_Lock;//平衡模式
-		else if(PWM_Input_CH5 >(int16_t)(PWM_Input_Offset+100))//CH5大于 1600us
-		//左上右上
-			return Quad_Auto_High;//定高模式
-	}
-	else if(PWM_Input_CH6 >(int16_t)(PWM_Input_Offset+100))//CH6大于 1600us
-	{
-		if(PWM_Input_CH5 < (int16_t)(PWM_Input_Offset-100))//CH5小于 1400us
-		//左下右下：
-			return 	Quad_Hold_Position ;//定点模式
-		else if(PWM_Input_CH5 >(int16_t)(PWM_Input_Offset+100))//CH5大于 1600us
-		//左上右下：
-			return Quad_Manual;//手动模式
-	}
-	return Quad_Manual;
-}
 /**************************实现函数********************************************
 	*函数原型:	uint8_t Change_Mode(unsigned char)
 	*功　　能:  切换飞行模式
@@ -831,53 +239,6 @@ void Led_Quad_Mode(void)
 		}
 	}
 }
-/**************************实现函数********************************************
-	*函数原型:	void Lock_Target_Yaw(void)
-	*功　　能:  目标航向控制。当油门大于1100us时，认为用户希望起飞。那么此时的航向做为目标航向
-*******************************************************************************/
-void Lock_Target_Yaw(void)
-{
-	static uint8_t yaw_lock = 0;
-	if(PWM_Input_CH3 > (int16_t)1100)
-	{
-		if(yaw_lock != 1){
-			yaw_lock = 1;
-			Target_Yaw = IMU_Yaw; //将当前的航向做为目标航向
-		}
-	}
-	else{
-		yaw_lock = 0;
-	}
-}
-/**************************实现函数********************************************
-	*函数原型:	void Get_Tartget_RPY(void)
-	*功　　能:  遥控信号的转换。读取遥控器信号，转换为相应的roll、pitch、yaw
-*******************************************************************************/
-void Get_Tartget_RPY(void)
-{
-	float ftemp=0;
-	Target_Roll = (int16_t)(PWM_Input_CH1 - PWM_Input_Offset);//将通道1 输入做为Roll的目标角度
-	Target_Pitch = (int16_t)(PWM_Input_CH2 - PWM_Input_Offset);//将通道2 输入做为Pitch的目标角度
-	//将通道4 输入做为目标航向输入	[<1400us || >1600]有效
-	if((PWM_Input_CH4 > (int16_t)(PWM_Input_Offset+100))||(PWM_Input_CH4 < (int16_t)(PWM_Input_Offset-100)))
-	{
-		ftemp = (float)(PWM_Input_CH4 - PWM_Input_Offset); //[-500,+500]
-		Target_Yaw += (ftemp / 500.0f)*0.2f; //每次改变的角度范围为-0.2~0.2 小溪++等于大河
-		if(Target_Yaw >180.0f)
-			Target_Yaw = Target_Yaw-360.0f;	//转[-180.0,+180.0]
-		else if(Target_Yaw <-180.0f)
-			Target_Yaw = 360.0f + Target_Yaw;
-	}
-	#if Yingzhang_GCS
-	//ch1增加往右，ch2增加往前，ch4增加往右
-	if(GCSControl_Leftward)		Target_Roll-=50;
-	if(GCSControl_Rightward)	Target_Roll+=50;
-	if(GCSControl_Forward)		Target_Pitch+=50;
-	if(GCSControl_Backward)		Target_Pitch-=50;
-	// if(GCSControl_LeftRotate)	Target_Yaw-=5;
-	// if(GCSControl_RightRotate)	Target_Yaw+=5;
-	#endif
-}
 
 /**************************实现函数********************************************
 	*函数原型:	void Mode_Manual(void)
@@ -925,44 +286,44 @@ void Mode_Level_Lock(void)
 void Mode_Hold_Position(void)
 {
 //GPS定点
-	Get_Tartget_RPY();//遥控信号的转换
-	Quad_THR = (int16_t)(PWM_Input_CH3); //将通道3 输入做为油门量
-	//-------------定点飞行------------	
-	//xiang：定点飞行模式除了添加了这一段代码，其他的和平衡模式一样；而这一段代码主要和GPS有关。
-	if(Home_Ready)
-	{    //是否保存了家点。Home_Ready变量在GPS.c中定义
-		if(GPS_Update)
-		{	//GPS数据有更新。
-			GPS_Position_Hold();  //重新计算定点值。
-			GPS_Update = 0;			
-		}
-		 Target_Roll += GPS_ROLL; //如果没有安装GPS，程序不会运行到这里
-		 Target_Pitch += GPS_PITCH;
-	}
-	else
-	{
-		 Position_Hold_Reset();
-	}
-	//--------通过PID计算PWM输出-------
-	if(PWM_Input_CH3 > (int16_t)(MINTHROTTLE+(MAXTHROTTLE-MINTHROTTLE)/10))
-	{
-		//遥控器油门大于10% 定高才会起作用，防止误动作引起电机转动
-		Quad_THR += Height_PID(Tartget_hight);
-	}
-	else
-	{
-		pidReset(&Climb);
-		pidReset(&AutoHigh_THR);
-		pidReset(&Z_Speed);		
-	}
-	Roll_Pitch_Yaw_AnglePID( Target_Roll/10.0f , Target_Pitch/10.0f , Target_Yaw);
-	PID_PITCH = PitchRate.PID_out;
-	PID_ROLL = RollRate.PID_out;
-	PID_YAW = YawRate.PID_out;
-	THROTTLE = Quad_THR;
-	//写输出到比较器  改写PWM输出脉宽值
+	// Get_Tartget_RPY();//遥控信号的转换
+	// Quad_THR = (int16_t)(PWM_Input_CH3); //将通道3 输入做为油门量
+	// //-------------定点飞行------------	
+	// //xiang：定点飞行模式除了添加了这一段代码，其他的和平衡模式一样；而这一段代码主要和GPS有关。
+	// if(Home_Ready)
+	// {    //是否保存了家点。Home_Ready变量在GPS.c中定义
+	// 	if(GPS_Update)
+	// 	{	//GPS数据有更新。
+	// 		GPS_Position_Hold();  //重新计算定点值。
+	// 		GPS_Update = 0;			
+	// 	}
+	// 	 Target_Roll += GPS_ROLL; //如果没有安装GPS，程序不会运行到这里
+	// 	 Target_Pitch += GPS_PITCH;
+	// }
+	// else
+	// {
+	// 	 Position_Hold_Reset();
+	// }
+	// //--------通过PID计算PWM输出-------
+	// if(PWM_Input_CH3 > (int16_t)(MINTHROTTLE+(MAXTHROTTLE-MINTHROTTLE)/10))
+	// {
+	// 	//遥控器油门大于10% 定高才会起作用，防止误动作引起电机转动
+	// 	Quad_THR += Height_PID(Tartget_hight);
+	// }
+	// else
+	// {
+	// 	pidReset(&Climb);
+	// 	pidReset(&AutoHigh_THR);
+	// 	pidReset(&Z_Speed);		
+	// }
+	// Roll_Pitch_Yaw_AnglePID( Target_Roll/10.0f , Target_Pitch/10.0f , Target_Yaw);
+	// PID_PITCH = PitchRate.PID_out;
+	// PID_ROLL = RollRate.PID_out;
+	// PID_YAW = YawRate.PID_out;
+	// THROTTLE = Quad_THR;
+	// //写输出到比较器  改写PWM输出脉宽值
 
-	PWM_Write_Motors(); //写输出到PWM通道  {调用PWM_Output.c的子程序}
+	// PWM_Write_Motors(); //写输出到PWM通道  {调用PWM_Output.c的子程序}
 	
 //营长:以下代码是我用光流模块写的悬停
 	float Output = 0;
@@ -1000,12 +361,7 @@ void Mode_Hold_Position(void)
 	}
 	else
 	{
-	    pidReset(&Climb);
-	    pidReset(&AutoHigh_THR);
-		  pidReset(&Z_Speed);		
-	    Increas_Output_Accumulat = 0;
-	    Height_PID_Out = 0;
-	    Quad_THR = (int16_t)(PWM_Input_CH3);
+	    Height_PID_Reset();
 	}
 
 //	PID_PITCH = PitchRate.PID_out;
@@ -1201,11 +557,7 @@ void Mode_Landing(void)
 	    {
 			High_Flag_IsLanded = 1;
 			Quad_THR = MINTHROTTLE;
-			pidReset(&Climb);
-			pidReset(&AutoHigh_THR);
-			pidReset(&Z_Speed);		
-			Increas_Output_Accumulat = 0;
-			Height_PID_Out = 0;
+			Height_PID_Reset();
 	    }
 		else if (altitude <= 0.3f)
 			Quad_THR -= 50.0f;
@@ -1235,15 +587,10 @@ void Mode_Landing(void)
 			Quad_THR = MINTHROTTLE;
 	}
 	else{
-		pidReset(&Climb);
-		pidReset(&AutoHigh_THR);
-		pidReset(&Z_Speed);		
-		Increas_Output_Accumulat=0;
-		Height_PID_Out = 0;
-		Quad_THR = (int16_t)(PWM_Input_CH3);
-		High_Flag_IsLanded = 0;//ch3拉到10%以下可以清除落地标志
-		Land_lasttime=1;//不要初始化为0，lasttime==0是一个判断条件
-		Land_targethigh = 0.0f;
+	    Height_PID_Reset();
+	    High_Flag_IsLanded = 0; //ch3拉到10%以下可以清除落地标志
+	    Land_lasttime = 1;      //不要初始化为0，lasttime==0是一个判断条件
+	    Land_targethigh = 0.0f;
 	}
 	
 	PID_PITCH = PitchRate.PID_out;
@@ -1283,12 +630,7 @@ void Mode_Auto_High(void)
 	}
 	else
 	{
-	    pidReset(&Climb);
-	    pidReset(&AutoHigh_THR);
-		pidReset(&Z_Speed);		
-	    Increas_Output_Accumulat = 0;
-	    Height_PID_Out = 0;
-	    Quad_THR = (int16_t)(PWM_Input_CH3);
+	    Height_PID_Reset();
 	}
 
 	PID_PITCH = PitchRate.PID_out;

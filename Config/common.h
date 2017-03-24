@@ -28,6 +28,8 @@
 #include "Camera.h"
 #include "UART4.h"
 #include "flow.h"
+#include "Target.h"
+#include "Quad_PID.h"
 
 extern double systemTime;
 
