@@ -27,8 +27,7 @@ volatile struct PWM_Input_struct1{
 }CH1,CH2,CH3,CH4,CH5,CH6;
 
 //当前 PWM输入的值  单位 us 
-volatile int16_t PWM_Input_CH1,PWM_Input_CH2,PWM_Input_CH3,
-									PWM_Input_CH4,PWM_Input_CH5,PWM_Input_CH6;
+volatile int16_t PWM_Input_CH1,PWM_Input_CH2,PWM_Input_CH3,PWM_Input_CH4,PWM_Input_CH5,PWM_Input_CH6;
 volatile int16_t RC_data[MAX_RC_Ch];
 
 extern int16_t PWM_Offset_Roll,PWM_Offset_Pitch,PWM_Offset_Yaw;
