@@ -24,23 +24,17 @@
 
 //-------------PWM 输出 API ------------------------------
 // x 的单位是us.
-#define  Set_PWMOuput_CH1(x)  TIM2->CCR4 = x ;\
-							  PWM_Output_CH1 =x
+#define  Set_PWMOuput_CH1(x)  TIM2->CCR4 = x ;
 							    
-#define  Set_PWMOuput_CH2(x)  TIM2->CCR3 = x ;\
-							  PWM_Output_CH2 =x
+#define  Set_PWMOuput_CH2(x)  TIM2->CCR3 = x ;
 
-#define  Set_PWMOuput_CH3(x)  TIM2->CCR2 = x ;\
-							  PWM_Output_CH3 =x
+#define  Set_PWMOuput_CH3(x)  TIM2->CCR2 = x ;
 
-#define  Set_PWMOuput_CH4(x)  TIM2->CCR1 = x ;\
-							  PWM_Output_CH4 =x
+#define  Set_PWMOuput_CH4(x)  TIM2->CCR1 = x ;
 
-#define  Set_PWMOuput_CH5(x)  TIM4->CCR3 = x ;\
-							  PWM_Output_CH5 =x
+#define  Set_PWMOuput_CH5(x)  TIM4->CCR3 = x ;
 
-#define  Set_PWMOuput_CH6(x)  TIM4->CCR4 = x ;\
-							  PWM_Output_CH6 =x
+#define  Set_PWMOuput_CH6(x)  TIM4->CCR4 = x ;
 
 //------------↑PWM 输出 API ↑-----------------------------
 extern volatile uint8_t THROTTLE_LOCKed;

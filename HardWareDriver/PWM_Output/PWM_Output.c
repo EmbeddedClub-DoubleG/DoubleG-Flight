@@ -28,8 +28,8 @@ volatile uint8_t THROTTLE_LOCKed = 1; //电机锁定，不启动
 //舵机信号 更新请求，在每个PWM周期中置1，通过主程序判断该值来决定是否更新舵机输出，
 volatile uint8_t Servo_Update_Req=0;
 //各个通道的当前输出值
-volatile uint16_t PWM_Output_CH1,PWM_Output_CH2,PWM_Output_CH3,PWM_Output_CH4,
-					PWM_Output_CH5,PWM_Output_CH6,PWM_Output_CH7,PWM_Output_CH8;
+volatile uint16_t PWM_Output_CH1 = 1000, PWM_Output_CH2 = 1000, PWM_Output_CH3 = 1000, PWM_Output_CH4 = 1000,
+		  PWM_Output_CH5 = 1000, PWM_Output_CH6 = 1000, PWM_Output_CH7 = 1000, PWM_Output_CH8 = 1000;
 
 
 /**************************实现函数********************************************
@@ -162,8 +162,10 @@ void PWM_Output_Initial(void)
 	Set_PWMOuput_CH2(PWMOuput_CH2_Default);
 	Set_PWMOuput_CH3(PWMOuput_CH3_Default);
 	Set_PWMOuput_CH4(PWMOuput_CH4_Default);
+	if((Fly_Mode == Y6)||(Fly_Mode == HEX6X)||(Fly_Mode == HEX6)){
 	Set_PWMOuput_CH5(PWMOuput_CH5_Default);
 	Set_PWMOuput_CH6(PWMOuput_CH6_Default);
+	}
 }
 
 /**************************实现函数********************************************
@@ -176,8 +178,10 @@ void PWM_Output_Set_default(void) {
 	Set_PWMOuput_CH2(PWMOuput_CH2_Default);
 	Set_PWMOuput_CH3(PWMOuput_CH3_Default);
 	Set_PWMOuput_CH4(PWMOuput_CH4_Default);
+	if((Fly_Mode == Y6)||(Fly_Mode == HEX6X)||(Fly_Mode == HEX6)){
 	Set_PWMOuput_CH5(PWMOuput_CH5_Default);
 	Set_PWMOuput_CH6(PWMOuput_CH6_Default);
+	}
 
 }
 
@@ -202,202 +206,84 @@ void PWM_PID_Smooth(void)
 #define PIDMIX(X,Y,Z) THROTTLE + PID_ROLL*X + PID_PITCH*Y + Yaw_DIRECT * PID_YAW*Z
 #define Min_PWM_Out  800    //us
 #define Max_PWM_Out  2200    //us
-int16_t motor[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
 void PWM_Write_Motors(void)
 {
+//TODO: 电调校准模式
+    PWM_PID_Smooth(); //平滑输出
 
-#if (Remote_Config_Enable == 1)	 //条件编译，Remote_Config_Enable的定义见fly_config.h
-	if(Quadrotor_Mode == Quad_ESC_Cal)return;	//正在校准电调，别添乱了	
+    //保护措施，当油门低时，不启动电机。
+    if (THROTTLE < (int16_t)(MINTHROTTLE + (MAXTHROTTLE - MINTHROTTLE) / 20))
+    {
+		PID_ROLL = 0;  //油门量小于 5%  不启动电机
+		PID_PITCH = 0; //所有的控制量清零，以防电机启动
+		PID_YAW = 0;
+    }
 
-	if(THROTTLE_LOCKed){	  //油门锁定中，输出PWM不让电机启动，以免伤人。
-		LED_Set_Blink(Red,1000,1000,1); //绿色LED长亮 表示PWM锁定中
-		//xiang:这两行代码是我注释掉的，为了实现下面说的功能
-		PWM_Output_Set_default();//xiang：这行一定要有，因为锁油门的初衷就是输出为最低输出
-		//return;
-		//xiang：这段代码是我加的，我怕下面写的代码有问题，为了安全，直接在这里给PWM_Output_CHx赋值，只适用于十字型和x型四轴
-		switch(Fly_Mode){
-			case QUADP :	//十字型的四轴飞行器 
-				motor[0] = Math_Constrain(PIDMIX( 0,+1,-1),Min_PWM_Out,Max_PWM_Out); //REAR	 后尾电机
-				motor[1] = Math_Constrain(PIDMIX(-1, 0,+1),Min_PWM_Out,Max_PWM_Out); //RIGHT 右边电机
-				motor[2] = Math_Constrain(PIDMIX(+1, 0,+1),Min_PWM_Out,Max_PWM_Out); //LEFT	 左边电机
-				motor[3] = Math_Constrain(PIDMIX( 0,-1,-1),Min_PWM_Out,Max_PWM_Out); //FRONT 前面电机
-				PWM_Output_CH1 =motor[0];
-				PWM_Output_CH2 =motor[1];
-				PWM_Output_CH3 =motor[2];
-				PWM_Output_CH4 =motor[3];
-				return;
-			case QUADX :	//X 型的四轴飞行器
-				motor[0] = Math_Constrain(PIDMIX(-1,+1,-1),Min_PWM_Out,Max_PWM_Out); //REAR_R  后右电机
-				motor[1] = Math_Constrain(PIDMIX(-1,-1,+1),Min_PWM_Out,Max_PWM_Out); //FRONT_R 前右电机
-				motor[2] = Math_Constrain(PIDMIX(+1,+1,+1),Min_PWM_Out,Max_PWM_Out); //REAR_L  后左电机
-				motor[3] = Math_Constrain(PIDMIX(+1,-1,-1),Min_PWM_Out,Max_PWM_Out); //FRONT_L 前左电机
-				PWM_Output_CH1 =motor[0];
-				PWM_Output_CH2 =motor[1];
-				PWM_Output_CH3 =motor[2];
-				PWM_Output_CH4 =motor[3];
-				return;
-			default:
-				return;
-		}
-	}
+    switch (Fly_Mode)
+    {
+    case QUADP:									//十字型的四轴飞行器
+		PWM_Output_CH1 = Math_Constrain(PIDMIX(0, +1, -1), Min_PWM_Out, Max_PWM_Out); //REAR	 后尾电机
+		PWM_Output_CH2 = Math_Constrain(PIDMIX(-1, 0, +1), Min_PWM_Out, Max_PWM_Out); //RIGHT 右边电机
+		PWM_Output_CH3 = Math_Constrain(PIDMIX(+1, 0, +1), Min_PWM_Out, Max_PWM_Out); //LEFT	 左边电机
+		PWM_Output_CH4 = Math_Constrain(PIDMIX(0, -1, -1), Min_PWM_Out, Max_PWM_Out); //FRONT 前面电机
+		break;
+    case QUADX:									 //X 型的四轴飞行器
+		PWM_Output_CH1 = Math_Constrain(PIDMIX(-1, +1, -1), Min_PWM_Out, Max_PWM_Out); //REAR_R  后右电机
+		PWM_Output_CH2 = Math_Constrain(PIDMIX(-1, -1, +1), Min_PWM_Out, Max_PWM_Out); //FRONT_R 前右电机
+		PWM_Output_CH3 = Math_Constrain(PIDMIX(+1, +1, +1), Min_PWM_Out, Max_PWM_Out); //REAR_L  后左电机
+		PWM_Output_CH4 = Math_Constrain(PIDMIX(+1, -1, -1), Min_PWM_Out, Max_PWM_Out); //FRONT_L 前左电机
+		break;
+    case Y4:
+		PWM_Output_CH1 = Math_Constrain(PIDMIX(+0, +1, -1), Min_PWM_Out, Max_PWM_Out); //REAR_1 CW
+		PWM_Output_CH2 = Math_Constrain(PIDMIX(-1, -1, 0), Min_PWM_Out, Max_PWM_Out);  //FRONT_R CCW
+		PWM_Output_CH3 = Math_Constrain(PIDMIX(+0, +1, +1), Min_PWM_Out, Max_PWM_Out); //REAR_2 CCW
+		PWM_Output_CH4 = Math_Constrain(PIDMIX(+1, -1, 0), Min_PWM_Out, Max_PWM_Out);  //FRONT_L CW
+		break;
+    case Y6:
+		PWM_Output_CH1 = Math_Constrain(PIDMIX(+0, +4 / 3, +1), Min_PWM_Out, Max_PWM_Out); //REAR
+		PWM_Output_CH2 = Math_Constrain(PIDMIX(-1, -2 / 3, -1), Min_PWM_Out, Max_PWM_Out); //RIGHT
+		PWM_Output_CH3 = Math_Constrain(PIDMIX(+1, -2 / 3, -1), Min_PWM_Out, Max_PWM_Out); //LEFT
+		PWM_Output_CH4 = Math_Constrain(PIDMIX(+0, +4 / 3, -1), Min_PWM_Out, Max_PWM_Out); //UNDER_REAR
+		PWM_Output_CH5 = Math_Constrain(PIDMIX(-1, -2 / 3, +1), Min_PWM_Out, Max_PWM_Out); //UNDER_RIGHT
+		PWM_Output_CH6 = Math_Constrain(PIDMIX(+1, -2 / 3, +1), Min_PWM_Out, Max_PWM_Out); //UNDER_LEFT
+		break;
+    case HEX6:
+		PWM_Output_CH1 = Math_Constrain(PIDMIX(-7 / 8, +1 / 2, +1), Min_PWM_Out, Max_PWM_Out); //REAR_R
+		PWM_Output_CH2 = Math_Constrain(PIDMIX(-7 / 8, -1 / 2, -1), Min_PWM_Out, Max_PWM_Out); //FRONT_R
+		PWM_Output_CH3 = Math_Constrain(PIDMIX(+7 / 8, +1 / 2, +1), Min_PWM_Out, Max_PWM_Out); //REAR_L
+		PWM_Output_CH4 = Math_Constrain(PIDMIX(+7 / 8, -1 / 2, -1), Min_PWM_Out, Max_PWM_Out); //FRONT_L
+		PWM_Output_CH5 = Math_Constrain(PIDMIX(+0, -1, +1), Min_PWM_Out, Max_PWM_Out);	 //FRONT
+		PWM_Output_CH6 = Math_Constrain(PIDMIX(+0, +1, -1), Min_PWM_Out, Max_PWM_Out);	 //REAR
+		break;
+    case HEX6X:
+		PWM_Output_CH1 = Math_Constrain(PIDMIX(-1 / 2, +7 / 8, +1), Min_PWM_Out, Max_PWM_Out); //REAR_R
+		PWM_Output_CH2 = Math_Constrain(PIDMIX(-1 / 2, -7 / 8, +1), Min_PWM_Out, Max_PWM_Out); //FRONT_R
+		PWM_Output_CH3 = Math_Constrain(PIDMIX(+1 / 2, +7 / 8, -1), Min_PWM_Out, Max_PWM_Out); //REAR_L
+		PWM_Output_CH4 = Math_Constrain(PIDMIX(+1 / 2, -7 / 8, -1), Min_PWM_Out, Max_PWM_Out); //FRONT_L
+		PWM_Output_CH5 = Math_Constrain(PIDMIX(-1, +0, -1), Min_PWM_Out, Max_PWM_Out);	 //RIGHT
+		PWM_Output_CH6 = Math_Constrain(PIDMIX(+1, +0, +1), Min_PWM_Out, Max_PWM_Out);	 //LEFT
+		break;
+    }
+
+#if (Remote_Config_Enable == 1) //条件编译，Remote_Config_Enable的定义见fly_config.h
+    if (Quadrotor_Mode == Quad_ESC_Cal)
+	return; //正在校准电调
+
+    if (THROTTLE_LOCKed)
+    {//油门锁定中，输出PWM不让电机启动，以免伤人。
+		LED_Set_Blink(Red, 1000, 1000, 1); //绿色LED长亮 表示PWM锁定中
+		PWM_Output_Set_default();
+		return;
+    }
 #endif
-
-  PWM_PID_Smooth();  //平滑输出 
-
-  //保护措施，当油门低时，不启动电机。	
-  if(THROTTLE < (int16_t)(MINTHROTTLE+(MAXTHROTTLE-MINTHROTTLE)/20)){
-  PID_ROLL = 0;	//油门量小于 5%  不启动电机
-  PID_PITCH = 0; //所有的控制量清零，以防电机启动
-  PID_YAW = 0;
-  }
-
-switch(Fly_Mode){
-  case QUADP :	//十字型的四轴飞行器
-    motor[0] = Math_Constrain(PIDMIX( 0,+1,-1),Min_PWM_Out,Max_PWM_Out); //REAR	 后尾电机
-    motor[1] = Math_Constrain(PIDMIX(-1, 0,+1),Min_PWM_Out,Max_PWM_Out); //RIGHT 右边电机
-    motor[2] = Math_Constrain(PIDMIX(+1, 0,+1),Min_PWM_Out,Max_PWM_Out); //LEFT	 左边电机
-    motor[3] = Math_Constrain(PIDMIX( 0,-1,-1),Min_PWM_Out,Max_PWM_Out); //FRONT 前面电机
-	//xiang：这段代码是我改的，目的是在锁定油门后，依然可以在上位机上看到pwm输出
-	if(THROTTLE_LOCKed)
-	{
-		PWM_Output_Set_default();//xiang：这行一定要有，因为锁油门的初衷就是输出为最低输出
-		PWM_Output_CH1 =motor[0];
-		PWM_Output_CH2 =motor[1];
-		PWM_Output_CH3 =motor[2];
-		PWM_Output_CH4 =motor[3];
-		return;
-	}else{
-		Set_PWMOuput_CH1(motor[0]);
-		Set_PWMOuput_CH2(motor[1]);
-		Set_PWMOuput_CH3(motor[2]);
-		Set_PWMOuput_CH4(motor[3]);
+    Set_PWMOuput_CH1(PWM_Output_CH1);
+    Set_PWMOuput_CH2(PWM_Output_CH2);
+    Set_PWMOuput_CH3(PWM_Output_CH3);
+    Set_PWMOuput_CH4(PWM_Output_CH4);
+	if((Fly_Mode == Y6)||(Fly_Mode == HEX6X)||(Fly_Mode == HEX6)){
+	Set_PWMOuput_CH5(PWM_Output_CH5);
+	Set_PWMOuput_CH6(PWM_Output_CH6);
 	}
-    break;
-  case QUADX :	//X 型的四轴飞行器
-    motor[0] = Math_Constrain(PIDMIX(-1,+1,-1),Min_PWM_Out,Max_PWM_Out); //REAR_R  后右电机
-    motor[1] = Math_Constrain(PIDMIX(-1,-1,+1),Min_PWM_Out,Max_PWM_Out); //FRONT_R 前右电机
-    motor[2] = Math_Constrain(PIDMIX(+1,+1,+1),Min_PWM_Out,Max_PWM_Out); //REAR_L  后左电机
-    motor[3] = Math_Constrain(PIDMIX(+1,-1,-1),Min_PWM_Out,Max_PWM_Out); //FRONT_L 前左电机
-	//xiang：这段代码是我改的，目的是在锁定油门后，依然可以在上位机上看到pwm输出
-	if(THROTTLE_LOCKed)
-	{
-		PWM_Output_Set_default();//xiang：这行一定要有，因为锁油门的初衷就是输出为最低输出
-		PWM_Output_CH1 =motor[0];
-		PWM_Output_CH2 =motor[1];
-		PWM_Output_CH3 =motor[2];
-		PWM_Output_CH4 =motor[3];
-		return;
-	}else{
-		Set_PWMOuput_CH1(motor[0]);
-		Set_PWMOuput_CH2(motor[1]);
-		Set_PWMOuput_CH3(motor[2]);
-		Set_PWMOuput_CH4(motor[3]);
-	}
-    break;
-  case Y4  :
-    motor[0] = Math_Constrain(PIDMIX(+0,+1,-1),Min_PWM_Out,Max_PWM_Out);   //REAR_1 CW
-    motor[1] = Math_Constrain(PIDMIX(-1,-1, 0),Min_PWM_Out,Max_PWM_Out); //FRONT_R CCW
-    motor[2] = Math_Constrain(PIDMIX(+0,+1,+1),Min_PWM_Out,Max_PWM_Out);   //REAR_2 CCW
-    motor[3] = Math_Constrain(PIDMIX(+1,-1, 0),Min_PWM_Out,Max_PWM_Out); //FRONT_L CW
-	//xiang：这段代码是我改的，目的是在锁定油门后，依然可以在上位机上看到pwm输出
-	if(THROTTLE_LOCKed)
-	{
-		PWM_Output_Set_default();//xiang：这行一定要有，因为锁油门的初衷就是输出为最低输出
-		PWM_Output_CH1 =motor[0];
-		PWM_Output_CH2 =motor[1];
-		PWM_Output_CH3 =motor[2];
-		PWM_Output_CH4 =motor[3];
-		return;
-	}else{
-		Set_PWMOuput_CH1(motor[0]);
-		Set_PWMOuput_CH2(motor[1]);
-		Set_PWMOuput_CH3(motor[2]);
-		Set_PWMOuput_CH4(motor[3]);
-	}
-    break;
-  case Y6  :
-    motor[0] = Math_Constrain(PIDMIX(+0,+4/3,+1),Min_PWM_Out,Max_PWM_Out); //REAR
-    motor[1] = Math_Constrain(PIDMIX(-1,-2/3,-1),Min_PWM_Out,Max_PWM_Out); //RIGHT
-    motor[2] = Math_Constrain(PIDMIX(+1,-2/3,-1),Min_PWM_Out,Max_PWM_Out); //LEFT
-    motor[3] = Math_Constrain(PIDMIX(+0,+4/3,-1),Min_PWM_Out,Max_PWM_Out); //UNDER_REAR
-    motor[4] = Math_Constrain(PIDMIX(-1,-2/3,+1),Min_PWM_Out,Max_PWM_Out); //UNDER_RIGHT
-    motor[5] = Math_Constrain(PIDMIX(+1,-2/3,+1),Min_PWM_Out,Max_PWM_Out); //UNDER_LEFT  
-	//xiang：这段代码是我改的，目的是在锁定油门后，依然可以在上位机上看到pwm输出
-	if(THROTTLE_LOCKed)
-	{
-		PWM_Output_Set_default();//xiang：这行一定要有，因为锁油门的初衷就是输出为最低输出
-		PWM_Output_CH1 =motor[0];
-		PWM_Output_CH2 =motor[1];
-		PWM_Output_CH3 =motor[2];
-		PWM_Output_CH4 =motor[3];
-		PWM_Output_CH5 =motor[4];
-		PWM_Output_CH6 =motor[5];
-		return;
-	}else{
-		Set_PWMOuput_CH1(motor[0]);
-		Set_PWMOuput_CH2(motor[1]);
-		Set_PWMOuput_CH3(motor[2]);
-		Set_PWMOuput_CH4(motor[3]);
-		Set_PWMOuput_CH5(motor[4]);
-		Set_PWMOuput_CH6(motor[5]); 
-	}
-    break;
-  case HEX6	:
-    motor[0] = Math_Constrain(PIDMIX(-7/8,+1/2,+1),Min_PWM_Out,Max_PWM_Out); //REAR_R
-    motor[1] = Math_Constrain(PIDMIX(-7/8,-1/2,-1),Min_PWM_Out,Max_PWM_Out); //FRONT_R
-    motor[2] = Math_Constrain(PIDMIX(+7/8,+1/2,+1),Min_PWM_Out,Max_PWM_Out); //REAR_L
-    motor[3] = Math_Constrain(PIDMIX(+7/8,-1/2,-1),Min_PWM_Out,Max_PWM_Out); //FRONT_L
-    motor[4] = Math_Constrain(PIDMIX(+0  ,-1  ,+1),Min_PWM_Out,Max_PWM_Out); //FRONT
-    motor[5] = Math_Constrain(PIDMIX(+0  ,+1  ,-1),Min_PWM_Out,Max_PWM_Out); //REAR
-	//xiang：这段代码是我改的，目的是在锁定油门后，依然可以在上位机上看到pwm输出
-	if(THROTTLE_LOCKed)
-	{
-		PWM_Output_Set_default();//xiang：这行一定要有，因为锁油门的初衷就是输出为最低输出
-		PWM_Output_CH1 =motor[0];
-		PWM_Output_CH2 =motor[1];
-		PWM_Output_CH3 =motor[2];
-		PWM_Output_CH4 =motor[3];
-		PWM_Output_CH5 =motor[4];
-		PWM_Output_CH6 =motor[5];
-		return;
-	}else{
-		Set_PWMOuput_CH1(motor[0]);
-		Set_PWMOuput_CH2(motor[1]);
-		Set_PWMOuput_CH3(motor[2]);
-		Set_PWMOuput_CH4(motor[3]);
-		Set_PWMOuput_CH5(motor[4]);
-		Set_PWMOuput_CH6(motor[5]); 
-	}
-    break;
-  case HEX6X :
-    motor[0] = Math_Constrain(PIDMIX(-1/2,+7/8,+1),Min_PWM_Out,Max_PWM_Out); //REAR_R
-    motor[1] = Math_Constrain(PIDMIX(-1/2,-7/8,+1),Min_PWM_Out,Max_PWM_Out); //FRONT_R
-    motor[2] = Math_Constrain(PIDMIX(+1/2,+7/8,-1),Min_PWM_Out,Max_PWM_Out); //REAR_L
-    motor[3] = Math_Constrain(PIDMIX(+1/2,-7/8,-1),Min_PWM_Out,Max_PWM_Out); //FRONT_L
-    motor[4] = Math_Constrain(PIDMIX(-1  ,+0  ,-1),Min_PWM_Out,Max_PWM_Out); //RIGHT
-    motor[5] = Math_Constrain(PIDMIX(+1  ,+0  ,+1),Min_PWM_Out,Max_PWM_Out); //LEFT
-	//xiang：这段代码是我改的，目的是在锁定油门后，依然可以在上位机上看到pwm输出
-	if(THROTTLE_LOCKed)
-	{
-		PWM_Output_Set_default();//xiang：这行一定要有，因为锁油门的初衷就是输出为最低输出
-		PWM_Output_CH1 =motor[0];
-		PWM_Output_CH2 =motor[1];
-		PWM_Output_CH3 =motor[2];
-		PWM_Output_CH4 =motor[3];
-		PWM_Output_CH5 =motor[4];
-		PWM_Output_CH6 =motor[5];
-		return;
-	}else{
-		Set_PWMOuput_CH1(motor[0]);
-		Set_PWMOuput_CH2(motor[1]);
-		Set_PWMOuput_CH3(motor[2]);
-		Set_PWMOuput_CH4(motor[3]);
-		Set_PWMOuput_CH5(motor[4]);
-		Set_PWMOuput_CH6(motor[5]); 
-	}
-  	break;
-  }
-
 }
 
 //------------------End of File----------------------------

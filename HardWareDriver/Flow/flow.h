@@ -1,73 +1,73 @@
 #ifndef __FLOW_H
 #define __FLOW_H
 #include "common.h"
-//器件地址
+//锟斤拷锟斤拷锟斤拷址
 #define FLOW_ADDR  0x42
-//存储器宏定义，如果是2字节1个数据，低字节地低位，高字节高位
+//锟芥储锟斤拷锟疥定锟藉，锟斤拷锟斤拷锟斤拷2锟街斤拷1锟斤拷锟斤拷锟捷ｏ拷锟斤拷锟街节地碉拷位锟斤拷锟斤拷锟街节革拷位
 
-//未积分的数据
-//记录总的创建的IIC的帧数
+//未锟斤拷锟街碉拷锟斤拷锟斤拷
+//锟斤拷录锟杰的达拷锟斤拷锟斤拷IIC锟斤拷帧锟斤拷
 #define FRAME_COUNT_SUM     0x00                    //uint16_t counts created I2C frames [frames]
-//X轴最新一帧所有像素移动和*10
+//X锟斤拷锟斤拷锟斤拷一帧锟斤拷锟斤拷锟斤拷锟斤拷锟狡讹拷锟斤拷*10
 #define PIXEL_FLOW_X_SUM    0x02                    //int16_t latest x flow measurement in pixels*10 [pixels]
-//Y轴最新一帧所有像素移动和*10
+//Y锟斤拷锟斤拷锟斤拷一帧锟斤拷锟斤拷锟斤拷锟斤拷锟狡讹拷锟斤拷*10
 #define PIXEL_FLOW_Y_SUM    0x04                    //int16_t latest y flow measurement in pixels*10 [pixels]
-//X轴速度
+//X锟斤拷锟劫讹拷
 #define FLOW_COMP_M_X       0x06                    //int16_t x velocity*1000 [meters/sec]
-//Y轴速度
+//Y锟斤拷锟劫讹拷
 #define FLOW_COMP_M_Y       0x08                    //int16_t y velocity*1000 [meters/sec]
-//光流图像质量
+//锟斤拷锟斤拷图锟斤拷锟斤拷锟斤拷
 #define QUAL                0x0a                    //int16_t Optical flow quality / confidence [0: bad, 255: maximum quality]
-//X轴陀螺仪速度
+//X锟斤拷锟斤拷锟斤拷锟斤拷锟劫讹拷
 #define GYRO_X_RATE         0x0c                    //int16_t latest gyro x rate [rad/sec]
-//Y轴陀螺仪速度
+//Y锟斤拷锟斤拷锟斤拷锟斤拷锟劫讹拷
 #define GYRO_Y_RATE         0x0e                    //int16_t latest gyro y rate [rad/sec]
-//Z轴陀螺仪速度
+//Z锟斤拷锟斤拷锟斤拷锟斤拷锟劫讹拷
 #define GYRO_Z_RATE         0x10                    //int16_t latest gyro z rate [rad/sec]
-//陀螺仪数据范围
+//锟斤拷锟斤拷锟斤拷锟斤拷锟捷凤拷围
 #define GYRO_RANGE          0x12                    //uint8_t gyro range [0 .. 7] equals [50 deg/sec .. 2000 deg/sec]
-//超声波数据上次更新到现在的时间间隔
+//锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟较次革拷锟铰碉拷锟斤拷锟节碉拷时锟斤拷锟斤拷锟斤拷
 #define SONAR_TIMESTAMP1     0x13                    //uint8_t time since last sonar update [milliseconds] 
-//地面距离  正值：已知距离   负值：未知距离
+//锟斤拷锟斤拷锟斤拷锟斤拷  锟斤拷值锟斤拷锟斤拷知锟斤拷锟斤拷   锟斤拷值锟斤拷未知锟斤拷锟斤拷
 #define GROUND_DISTANCE1    0x14                    //int16_t Ground distance in meters*1000 [meters]. Positive value: distance known. 
                                                             //Negative value: Unknown distance
-//积分后的数据
-//上次读取数据后，数据更新了多少次
+//锟斤拷锟街猴拷锟斤拷锟斤拷锟斤拷
+//锟较次讹拷取锟斤拷锟捷猴拷锟斤拷锟斤拷锟捷革拷锟斤拷锟剿讹拷锟劫达拷
 #define FRAME_COUNT_SINCE_LAST_READOUT  0x16        //uint16_t number of flow measurements since last I2C readout [frames]
-//上次读取IIC数据后，X轴速度积分后所得值
+//锟较次讹拷取IIC锟斤拷锟捷猴拷锟斤拷X锟斤拷锟劫度伙拷锟街猴拷锟斤拷锟斤拷值
 #define PIXEL_FLOW_X_INTEGRAL           0x18        //int16_t  accumulated flow in radians*10000 around x axis since last I2C readout [rad*10000]
-//上次读取IIC数据后，Y轴速度积分后所得值
+//锟较次讹拷取IIC锟斤拷锟捷猴拷锟斤拷Y锟斤拷锟劫度伙拷锟街猴拷锟斤拷锟斤拷值
 #define PIXEL_FLOW_Y_INTEGRAL           0x1a        //int16_t  accumulated flow in radians*10000 around y axis since last I2C readout [rad*10000]
-//上次读取IIC数据后X轴角速度积分值
+//锟较次讹拷取IIC锟斤拷锟捷猴拷X锟斤拷锟斤拷锟劫度伙拷锟斤拷值
 #define GYRO_X_RATE_INTEGRAL            0x1c        //int16_t  accumulated gyro x rates in radians*10000 since last I2C readout [rad*10000]  
-//上次读取IIC数据后Y轴角速度积分值
+//锟较次讹拷取IIC锟斤拷锟捷猴拷Y锟斤拷锟斤拷锟劫度伙拷锟斤拷值
 #define GYRO_Y_RATE_INTEGRAL            0x1e        //int16_t  accumulated gyro y rates in radians*10000 since last I2C readout [rad*10000] 
-//上次读取IIC数据后Z轴角速度积分值
+//锟较次讹拷取IIC锟斤拷锟捷猴拷Z锟斤拷锟斤拷锟劫度伙拷锟斤拷值
 #define GYRO_Z_RATE_INTEGRAL            0x20        //int16_t  accumulated gyro z rates in radians*10000 since last I2C readout [rad*10000]
-//上次和这次读取IIC数据的时间间隔
+//锟较次猴拷锟斤拷锟轿讹拷取IIC锟斤拷锟捷碉拷时锟斤拷锟斤拷锟斤拷
 #define INTEGRATION_TIMESPAN            0x22        //uint32_t accumulation timespan in microseconds since last I2C readout [microseconds]
-//超声波数据上次更新到现在的时间间隔
+//锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟较次革拷锟铰碉拷锟斤拷锟节碉拷时锟斤拷锟斤拷锟斤拷
 #define SONAR_TIMESTAMP2                 0x26        //uint32_t time since last sonar update [microseconds]
-//地面距离
+//锟斤拷锟斤拷锟斤拷锟斤拷
 #define GROUND_DISTANCE2                0x2a        //int16_t  Ground distance in meters*1000 [meters*1000]
-//陀螺仪温度
+//锟斤拷锟斤拷锟斤拷锟铰讹拷
 #define GYRO_TEMPERATURE                0x2c        //int16_t  Temperature * 100 in centi-degrees Celsius [degcelsius*100] 
-//光流积分数据质量
+//锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷
 #define QUALITY                         0x2e        //uint8_t averaged quality of accumulated flow values [0:bad quality;255: max quality]
 
 
-//读指定寄存器指定字节数数据
+//锟斤拷指锟斤拷锟侥达拷锟斤拷指锟斤拷锟街斤拷锟斤拷锟斤拷锟斤拷
 u8 flow_read_data(u8 addr,u8 reg,u8 len,u8 *buf);
-//读8位无符号数据
+//锟斤拷8位锟睫凤拷锟斤拷锟斤拷锟斤拷
 uint8_t     readu8_date(u8 addr,u8 reg);
-//读16位无符号数据
+//锟斤拷16位锟睫凤拷锟斤拷锟斤拷锟斤拷
 uint16_t    readu16_date(u8 addr,u8 reg);
-//读16位有符号数据
+//锟斤拷16位锟叫凤拷锟斤拷锟斤拷锟斤拷
 int16_t     reads16_date(u8 addr,u8 reg);
-//读32位无符号数据
+//锟斤拷32位锟睫凤拷锟斤拷锟斤拷锟斤拷
 uint32_t    readu32_date(u8 addr,u8 reg);
-//更新光流数据
-void FLOW_getData();
+//锟斤拷锟铰癸拷锟斤拷锟斤拷锟斤拷
+void FLOW_getData(void);
 
 extern unsigned char flowdata[47];
 extern short int X_Speed,Y_Speed;
