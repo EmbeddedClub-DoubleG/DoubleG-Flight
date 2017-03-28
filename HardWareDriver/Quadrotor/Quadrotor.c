@@ -357,7 +357,7 @@ void Mode_Hold_Position(void)
 
 	if (PWM_Input_CH3 > (int16_t)(MINTHROTTLE + (MAXTHROTTLE - MINTHROTTLE) / 10))
 	{ //遥控器油门大于10% 定高才会起作用，防止误动作引起电机转动
-	    Quad_THR += Height_PID(MS5611_Altitude/100.0f);
+	    Quad_THR += Height_PID(Targe_high);
 	}
 	else
 	{
@@ -410,13 +410,13 @@ void Mode_Hold_Position(void)
 			
 		  pidSetTarget_Measure(&Position_X_Hold,0,Xmove);
 			Position_X_MoveErr = Position_X_MoveErr
-			+ (Interval_dt / (15.9155e-3 + Interval_dt)) * (Math_fConstrain(Position_X_Hold.merror , -1000.0f , 1000.0f) - Position_X_MoveErr);
+			+ (Interval_dt / (15.9155e-3f + Interval_dt)) * (Math_fConstrain(Position_X_Hold.merror , -1000.0f , 1000.0f) - Position_X_MoveErr);
 			Position_SpeedTarget = pidUpdate_err(&Position_X_Hold,Position_X_MoveErr,Interval_dt);
 			Position_SpeedTarget = Math_fConstrain(Position_SpeedTarget,-200,+200);
 			pidSetTarget_Measure(&Position_X_Speed,Position_SpeedTarget,X_Speed);
 			Position_X_SpeedErr = Position_X_SpeedErr
-			+ (Interval_dt / (15.9155e-3 + Interval_dt)) * (Math_fConstrain(Position_X_Speed.merror , -250.0f , 250.0f) - Position_X_SpeedErr);
-			Output = pidUpdate_err(&Position_X_Speed,Position_X_SpeedErr,Interval_dt)/100.0;
+			+ (Interval_dt / (15.9155e-3f + Interval_dt)) * (Math_fConstrain(Position_X_Speed.merror , -250.0f , 250.0f) - Position_X_SpeedErr);
+			Output = pidUpdate_err(&Position_X_Speed,Position_X_SpeedErr,Interval_dt)/100.0f;
 			Output = Math_fConstrain(Output,-2.4,2.4);
 			Increas_Xspeed_Accumulat = Output;//增量式pid的输出的累加
 			Target_Roll = (- Increas_Xspeed_Accumulat) * 10;
@@ -460,13 +460,13 @@ void Mode_Hold_Position(void)
 
 			pidSetTarget_Measure(&Position_Y_Hold,0,Ymove);
 			Position_Y_MoveErr = Position_Y_MoveErr
-			+ (Interval_dt / (15.9155e-3 + Interval_dt)) * (Math_fConstrain(Position_Y_Hold.merror , -1000.0f , 1000.0f) - Position_Y_MoveErr);
+			+ (Interval_dt / (15.9155e-3f + Interval_dt)) * (Math_fConstrain(Position_Y_Hold.merror , -1000.0f , 1000.0f) - Position_Y_MoveErr);
 			Position_SpeedTarget = pidUpdate_err(&Position_Y_Hold,Position_Y_MoveErr,Interval_dt);
 			Position_SpeedTarget = Math_fConstrain(Position_SpeedTarget,-200,+200);
 			pidSetTarget_Measure(&Position_Y_Speed,Position_SpeedTarget,Y_Speed);
 			Position_Y_SpeedErr = Position_Y_SpeedErr
-			  + (Interval_dt / (15.9155e-3 + Interval_dt)) * (Math_fConstrain(Position_Y_Speed.merror , -250.0f , 250.0f) - Position_Y_SpeedErr);
-			Output = pidUpdate_err(&Position_Y_Speed,Position_Y_SpeedErr,Interval_dt)/100.0;
+			  + (Interval_dt / (15.9155e-3f + Interval_dt)) * (Math_fConstrain(Position_Y_Speed.merror , -250.0f , 250.0f) - Position_Y_SpeedErr);
+			Output = pidUpdate_err(&Position_Y_Speed,Position_Y_SpeedErr,Interval_dt)/100.0f;
 			Output = Math_fConstrain(Output,-2.4,2.4);
 			Increas_Yspeed_Accumulat = Output;//增量式pid的输出的累加
 			Target_Pitch = (Increas_Yspeed_Accumulat) * 10;
@@ -540,7 +540,7 @@ float Land_targethigh = 0.0f;//0是一个判断条件，==0表示未开始降落
 uint8_t High_Flag_IsLanded = 0;//是否已经到达地面；1：是，0：否。
 void Mode_Landing(void)
 {
-    float altitude = MS5611_Altitude/100.0f;
+    float altitude = Filter_Altitude/100.0f;
     uint32_t Land_nowtime=micros();
     static uint32_t Land_lasttime=1;//不要初始化为0，lasttime==0是一个判断条件
 

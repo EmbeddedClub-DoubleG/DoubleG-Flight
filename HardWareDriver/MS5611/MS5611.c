@@ -12,6 +12,7 @@ MS5611是气压计，用于测量高度
 #include "MS5611.h"
 #include <math.h>
 #include "common.h"
+#include "AltitudeFilter.h"
 
 #define MS5611Press_OSR  MS561101BA_OSR_4096  //气压采样精度
 #define MS5611Temp_OSR   MS561101BA_OSR_4096  //温度采样精度
@@ -31,17 +32,16 @@ static uint16_t PROM_C[MS561101BA_PROM_REG_COUNT]; //标定值存放
 static uint32_t Current_delay;	   //转换延时时间 us 
 static uint32_t Start_Convert_Time;   //启动转换时的 时间 us 
 static int32_t  tempCache;
-uint8_t ALT_Updated = 0; //气压计高度更新完成标志。
-static float Alt_Offset_cm = 0;
+float MS5611_ALT_Update_Interval = 0.0; //两次高度测量，之间的时间间隔
+uint8_t MS5611_ALT_Updated = 0; //气压计高度更新完成标志。
+
+static float MS5611_Alt_Offset_cm = 0;
+float MS5611_Alt_offset_Pa=0; //存放着MS5611_Alt_Offset_cm米的气压值
+
 static float avg_Pressure;
-float ALT_Update_Interval = 0.0; //两次高度测量，之间的时间间隔
 
-//units (Celsius degrees*100, mbar*100  ).
-//单位 [温度 0.01度] [气压 帕]  [高度0.01米] 
-float MS5611_Temperature,MS5611_Pressure,MS5611_Altitude;//经过各种处理后的最终的测量结果，其他地方如果要用的话就直接用这三个。
-
-uint8_t Ultra_IsUseful = 0;//update20161227:新增:是否只使用超声波数据标识,==1的时候不使用气压计,这个变量的值有超声波数据健康度决定
-// float MS5611_Debug_D = 0;
+float MS5611_Temperature,MS5611_Pressure,MS5611_Altitude;//单位 [温度 0.01度] [气压 帕]  [高度0.01米] 
+float MS5611_Altitude_D = 0.0f;
 // 延时表  单位 us 	  不同的采样精度对应不同的延时值
 uint32_t MS5611_Delay_us[9] = {
 	1500,//MS561101BA_OSR_256 0.9ms  0x00
@@ -55,7 +55,7 @@ uint32_t MS5611_Delay_us[9] = {
 	11000,//MS561101BA_OSR_4096 9.1ms 0x08
 };
 
-// FIFO 队列					
+// FIFO 队列					//TODO: 把气压计的队列改成真正的队列？
 static float Temp_buffer[MOVAVG_SIZE]={0},Press_buffer[MOVAVG_SIZE]={0},Alt_buffer[MOVAVG_SIZE]={0};
 static uint8_t temp_index=0,press_index=0; //队列指针
 
@@ -73,32 +73,25 @@ void MS561101BA_NewPress(float val) {
 
 //添加一个新的值到 高度队列 进行滤波
 void MS561101BA_NewAlt(float val) {
-// update20170110:添加对高度数据是否合理的判断，偏差太大的数据则剔除
     int16_t i;
-    static uint32_t alt_lastupdate, temp;
-    // float d2alt = 0;//高度取二阶微分
+    static uint32_t alt_lastupdate;
+    uint32_t temp;
     temp = micros();
-    //update20161227:增加对定时器溢出的判断
     if (temp <= alt_lastupdate)
-		ALT_Update_Interval = ((float)(temp + (0xffffffff - alt_lastupdate))) / 1000000.0f;
+		MS5611_ALT_Update_Interval = ((float)(temp + (0xffffffff - alt_lastupdate))) / 1000000.0f;
     else
-		ALT_Update_Interval = ((float)(temp - alt_lastupdate)) / 1000000.0f;
+		MS5611_ALT_Update_Interval = ((float)(temp - alt_lastupdate)) / 1000000.0f;
     alt_lastupdate = temp;
-    // d2alt = Alt_buffer[MOVAVG_SIZE - 1] + Alt_buffer[MOVAVG_SIZE - 3] - 2.0f * Alt_buffer[MOVAVG_SIZE - 2];
-    // if (d2alt < 15.0f&&d2alt>-15.0f)
-    {
-		for (i = 1; i < MOVAVG_SIZE; i++)
-			Alt_buffer[i - 1] = Alt_buffer[i];
-		Alt_buffer[MOVAVG_SIZE - 1] = val;
-	}
+	for (i = 1; i < MOVAVG_SIZE; i++)
+		Alt_buffer[i - 1] = Alt_buffer[i];
+	Alt_buffer[MOVAVG_SIZE - 1] = val;
 }
 
 
 //取气压计的D变化率
-float MS5611BA_Get_D(void){
+void MS5611BA_Get_D(void){
 	float new=0,old=0;
 	float temp;
-	static float D = 0;
 	int16_t i;
 	for(i=0;i<MOVAVG_SIZE/2;i++)
 		old += Alt_buffer[i];
@@ -107,17 +100,12 @@ float MS5611BA_Get_D(void){
 	    new += Alt_buffer[i];
 	new /= (MOVAVG_SIZE/2);
 	temp = new - old;
-	temp = temp * 2.0f / MOVAVG_SIZE / ALT_Update_Interval;
-	//update20161230:增加对是否会出现0/0做判断，因为在起始的时候，new和old和ALT_Update_Interval都是0，要等好长一段时间后才有值
+	temp = temp * 2.0f / MOVAVG_SIZE / MS5611_ALT_Update_Interval;
+	//update20161230:增加对是否会出现0/0做判断，因为在起始的时候，new和old和MS5611_ALT_Update_Interval都是0，要等好长一段时间后才有值
 	if (!isnan(temp))//判断temp是不是一个数字
 	{
-	    D = D +	(ALT_Update_Interval / (ALT_Update_Interval + MS5611_Lowpass)) * (temp - D);
-	    // MS5611_Debug_D = D;
-	    //update20170110:增加互补滤波
-	    // D = 0.05f * D + (1.0f - 0.05f) * Motion_Velocity_Z * 100.0f;
-	    // Motion_Velocity_Z = D / 100.0f;
+	    MS5611_Altitude_D = MS5611_Altitude_D +	(MS5611_ALT_Update_Interval / (MS5611_ALT_Update_Interval + MS5611_Lowpass)) * (temp - MS5611_Altitude_D);
 	}
-	return D;
 }
 
 //读取队列 的平均值
@@ -230,34 +218,30 @@ void MS561101BA_GetTemperature(void){
 	tempCache = MS561101BA_getConversion();	
 }
 
-float Alt_offset_Pa=0; //存放着0米时 对应的气压值  这个值存放上电时的气压值  	xiang:这个值未必是0米的气压值，而是Alt_Offset_cm米的气压值，初始时Alt_Offset_cm==0，
-																		//但是如果超声波的数据有效（即在超声波测量范围内）会用超声波的数据来校准气压计，
-																		//标定高度为Alt_Offset_cm时的气压为Alt_offset_Pa，然后以这对数据为基准来将气压值换算为高度值。
 /**************************实现函数********************************************
 *函数原型:		float MS561101BA_get_altitude(void)
 *功　　能:	    将当前的气压值转成 高度。	 
 *******************************************************************************/
-float MS561101BA_get_altitude(void){
+void MS561101BA_get_altitude(void){
 	//update20161227:新增低通滤波和是否只使用超声波数据标识,并且改了几个变量名
 	static uint8_t  Covert_count=0;
-	static float Altitude;
 	float newAltitude;
-	if(Alt_offset_Pa==0){ // 是否初始化过0米气压值？	xiang:不用担心真的出现气压为0的情况，因为只有真空时气压为0
+	if(MS5611_Alt_offset_Pa==0){ // 是否初始化过0米气压值？	xiang:不用担心真的出现气压为0的情况，因为只有真空时气压为0
 		if(Covert_count++<50);  //等待气压稳定 后 再取零米时的气压值
-		else Alt_offset_Pa = MS5611_Pressure; //把 当前气压值保存成 0 米时的气压
+		else MS5611_Alt_offset_Pa = MS5611_Pressure; //把 当前气压值保存成 0 米时的气压
 		avg_Pressure = MS5611_Pressure;
-		Altitude = 0; //高度 为 0
-		return Altitude;
+		MS5611_Altitude = 0; //高度 为 0
+		return;
 	}
 	//计算相对于 上电时的位置的 高度值 。
-	newAltitude = 4433000.0 * (1 - pow((MS5611_Pressure / Alt_offset_Pa), 0.1903));
-	newAltitude = newAltitude + Alt_Offset_cm ;  //加偏置
-	Altitude = Altitude +	  //低通滤波   20hz
-	 	(ALT_Update_Interval/(ALT_Update_Interval + MS5611_Lowpass))*(newAltitude - Altitude);
-	if(Ultra_IsUseful <= 0)
-	    MS561101BA_NewAlt(Altitude);
-	Altitude = MS561101BA_getAvg(Alt_buffer,MOVAVG_SIZE);
-	return (Altitude);
+	newAltitude = 4433000.0 * (1 - pow((MS5611_Pressure / MS5611_Alt_offset_Pa), 0.1903));
+	newAltitude = newAltitude + MS5611_Alt_Offset_cm ;  //加偏置
+	
+	MS5611_Altitude = MS561101BA_getAvg(Alt_buffer,MOVAVG_SIZE);
+	MS5611_Altitude = MS5611_Altitude +	  //低通滤波   20hz
+	 	(MS5611_ALT_Update_Interval/(MS5611_ALT_Update_Interval + MS5611_Lowpass))*(newAltitude - MS5611_Altitude);
+	MS561101BA_NewAlt(MS5611_Altitude);
+	MS5611BA_Get_D();
 }
 
 /**************************实现函数********************************************
@@ -265,8 +249,8 @@ float MS561101BA_get_altitude(void){
 *功　　能:	    将当前的气压做为0米时的气压。	 
 *******************************************************************************/
 void MS561101BA_ResetAlt(void){
-	Alt_offset_Pa = MS5611_Pressure; //把 当前气压值保存成 0 米时的气压	
-	Alt_Offset_cm = 0;
+	MS5611_Alt_offset_Pa = MS5611_Pressure; //把 当前气压值保存成 0 米时的气压	
+	MS5611_Alt_Offset_cm = 0;
 }
 
 /**************************实现函数********************************************
@@ -274,10 +258,8 @@ void MS561101BA_ResetAlt(void){
 *功　　能:	    将当前的气压做为 Current 米时的气压。	 
 *******************************************************************************/
 void MS561101BA_SetAlt(float Current){
-	Alt_offset_Pa = (avg_Pressure); //把 当前气压值保存成 0 米时的气压	
-	Alt_Offset_cm = Current*100.0f; //米转成 CM
-	MS561101BA_NewAlt(Current*100.0f);	 //新的高度值
-	ALT_Updated = 1; //高度更新 完成。
+	MS5611_Alt_offset_Pa = (avg_Pressure); //把 当前气压值保存成 0 米时的气压	
+	MS5611_Alt_Offset_cm = Current*100.0f; //米转成 CM
 }
 
 /**************************实现函数********************************************
@@ -289,7 +271,6 @@ void MS561101BA_getPressure(void) {
 	int64_t TEMP,T2,Aux_64,OFF2,SENS2;  // 64 bits
 	int32_t rawPress = MS561101BA_getConversion();
 	int64_t dT  = tempCache - (((int32_t)PROM_C[4]) << 8);
-	float temp;
 	TEMP = 2000 + (dT * (int64_t)PROM_C[5])/8388608;
 	off  = (((int64_t)PROM_C[1]) << 16) + ((((int64_t)PROM_C[3]) * dT) >> 7);
 	sens = (((int64_t)PROM_C[0]) << 15) + (((int64_t)(PROM_C[2]) * dT) >> 8);
@@ -312,11 +293,7 @@ void MS561101BA_getPressure(void) {
 	MS561101BA_NewTemp(TEMP);
 	MS5611_Temperature = MS561101BA_getAvg(Temp_buffer,MOVAVG_SIZE); //0.01c
 	
-	temp = MS561101BA_get_altitude(); // 0.01meter
-							  
-	MS5611_Altitude = MS5611_Altitude +	  //低通滤波   20hz
-	 (ALT_Update_Interval/(ALT_Update_Interval + MS5611_Lowpass))*(temp - MS5611_Altitude);
-	
+	MS561101BA_get_altitude();
 }
 
 
@@ -348,7 +325,8 @@ void MS5611BA_Routing(void) {
 		case SCPressureing:	 //正在转换气压值
 			if((micros()-Start_Convert_Time) > Current_delay){ //延时时间到了吗？
 			MS561101BA_getPressure();  //更新 	
-			ALT_Updated = 1; //高度更新 完成。
+			MS5611_ALT_Updated = 1; //高度更新 完成。
+			Get_Filter_Altitude();
 			Now_doing = SCTemperature; //从头再来	
 			}
 			break;

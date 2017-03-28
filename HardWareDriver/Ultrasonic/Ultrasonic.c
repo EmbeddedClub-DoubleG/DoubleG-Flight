@@ -17,6 +17,8 @@
 #include "delay.h"
 #include "MS5611.h"
 #include "IMU.h"//update20161227:由于增加了超声波消除俯仰和横滚影响，所以使用了IMU_Roll和IMU_Pitch
+#include "AltitudeFilter.h"
+
 //------------超声波驱动状态机--------------
 #define Ultra_ST_Started   0x01	  //启动测距
 #define Ultra_ST_RX1       0x02	  //收到回波1
@@ -26,6 +28,7 @@
 #define Ultra_ST_Error     0xf2	  //错误
 
 #define MOVAVG_SIZE  10	   //保存最近的10个数据 进行平均滤波
+#define Max_Range	3.5f
 #define Time_outed        (uint32_t)(Max_Range*2)*1000000/340  // 超时时间 单位us
 // low pass filter:
 // f_cut = 1/(2*PI*cutoff_freq)
@@ -40,20 +43,30 @@ const float  Ultra_Lowpass = 31.8310e-3f;  //低通滤波系数 20hz//update2016
 volatile uint8_t Ultra_Stauts = Ultra_ST_Idle; //当前状态
 volatile uint32_t Ultra_High_time = 0,
 				   Ultra_Start_time = 0,	
-				   Ultra_Low_time = 0;	
+				   Ultra_Low_time = 0;
+
 static float Dist_buffer[MOVAVG_SIZE];
 static uint8_t Dis_index = 0;
+
 float Ultra_dt = 0.0; //两次测量的时间差作为Ultra_dt 单位us
 float  Ultra_Distance = 0 ;//xiang：全局变量，当前检测到的高度值，单位是米；超声波这一块所有的距离单位都是米;本来是初始化为0，为了方便观察，我设置为0.01
-float Ultra_Debug_Distance = 0;
-
-/*--------------------------函数实现--------------------------*/
+uint8_t Ultra_ALT_Updated = 0; //高度更新完成标志。
+int16_t Ultra_Healthy = 0;//当数据在量程外时--，在量程内时++；范围为0~20；当值在15~20内时认为超声波健康
 //添加一个新的值到 队列 进行滤波
-void Ultrasonic_NewDis(float val) {
-  if(val > (float)Max_Range)
-  	return;		
-  Dist_buffer[Dis_index] = val;
-  Dis_index = ((Dis_index + 1) % MOVAVG_SIZE);  
+void Ultrasonic_NewDis(float val)
+{
+    static uint32_t last_time = 0;
+    uint32_t temp;
+    if (val > (float)Max_Range)
+		return;
+    temp = micros();
+    if (temp <= last_time)
+		Ultra_dt = ((float)(temp + (0xffffffff - last_time))) / 1000000.0f;
+    else
+		Ultra_dt = ((float)(temp - last_time)) / 1000000.0f;
+    last_time = temp;
+    Dist_buffer[Dis_index] = val;
+    Dis_index = ((Dis_index + 1) % MOVAVG_SIZE);
 }
 
 //读取队列 的平均值
@@ -127,13 +140,10 @@ void Ultrasonic_Start(void){
 
 //超声波测距的线程， 此程序需要定时调用。以更新距离
 void Ultrasonic_Routine(void){
-	//update20161227:不再使用单独的超声波求微分的函数，而是把数据存到气压计的定高buffer里，让气压计求微分；新增超声波健康度变量和是否只使用超声波数据标识；新增消除角度对超声波的影响
 	uint32_t temp;
 	static uint32_t HaltTime = 0;
 	static int16_t Ultra_valid = 0;
-	static uint32_t last_time=0;
-	static float Distance;
-	// static float lastDistance = 0.101758;
+	float Distance;
 	//计算在当前温度下 对应的空气中声音的传播速度
 	/*
 	音速与介质的密度和弹性性质有关，因此也随介质的温度、
@@ -159,14 +169,7 @@ void Ultrasonic_Routine(void){
 			Sound_Speed = (332.0f+ (MS5611_Temperature/100.0f)*0.607f);//计算声速
 			Distance = (float)(Ultra_Low_time - Ultra_High_time);  //时间   单位 us
 			Distance = (Distance/2000000.0f); //计算 声音走一半，需要的时间，单位 S
-			Distance = (Distance) * Sound_Speed; //距离
-			//update20161227:把dt的计算移到这里，增加对定时器溢出的判断			
-			temp = micros();
-			if (temp <= last_time)
-				Ultra_dt = ((float)(temp + (0xffffffff - last_time))) / 1000000.0f;
-			else
-				Ultra_dt = ((float)(temp - last_time)) / 1000000.0f;
-			last_time = temp;
+			Distance = (Distance) * Sound_Speed; //距离			
 
 			if ((Distance > (float)Max_Range) || (Distance < 0.01f)) //update20161227:把判断条件从<0改为<0.01
 			{
@@ -175,34 +178,37 @@ void Ultrasonic_Routine(void){
 			}
 			Distance *= (float)cos(fabs(IMU_Roll * M_PI / 180));//fabs是取绝对值//update20161227:消除角度影响；这个代码需不需要加有争议，因为cos计算量大，但是收益不高
 			Distance *= (float)cos(fabs(IMU_Pitch * M_PI / 180));
-			Ultra_Debug_Distance = Distance;
-			//update201612271359增加低通滤波
+
+			Ultra_Distance = Ultrasonic_getAvg(Dist_buffer,MOVAVG_SIZE);
 			Ultra_Distance = Ultra_Distance + //低通滤波   20hz
 					 (Ultra_dt / (Ultra_dt + Ultra_Lowpass)) * (Distance - Ultra_Distance);
 			Ultrasonic_NewDis(Ultra_Distance);
-
+			if(++Ultra_Healthy>20)
+			    Ultra_Healthy = 20;
 			if(++Ultra_valid>MOVAVG_SIZE){ //连续MOVAVG_SIZE次超声波高度有效，那么应该用它来修正气压高度的漂移
 				MS561101BA_SetAlt(Ultra_Distance);  //超声波 高度有效。标定气压高度。xiang：这里不仅标定了气压高度，还把超声波的数据存到了气压计的buffer里
-				Ultra_IsUseful = 1;//update201612271346直接用Ultra_valid作为是否只使用超声波的健康度
 				Ultra_valid = MOVAVG_SIZE;
 			}
-			Ultra_Distance = Ultrasonic_getAvg(Dist_buffer,MOVAVG_SIZE);
+			Ultra_ALT_Updated = 1;
+			Get_Filter_Altitude();
 			Ultra_Stauts = Ultra_ST_Idle;
 			break;
 	case Ultra_ST_Error:
+			if(--Ultra_Healthy<0)
+			    Ultra_Healthy = 0;
 			Ultra_valid = 0;  //超声波高度有效计数 清零
-			Ultra_IsUseful = 0;
 			Ultra_Stauts = Ultra_ST_Idle; //进入休息状态
 			break;
 	case Ultra_ST_Idle:		 //休息时间。我们不要采集那么快。
-		 if(HaltTime == 0){
-		 	HaltTime =	micros();
-			}else{
-			temp =	micros();
-			if((temp - HaltTime)>Time_outed){
-				Ultra_Stauts = Ultra_Restart; //休息够了，重新启动一次采集
-				HaltTime = 0;
-			}
+			if(HaltTime == 0){
+				HaltTime =	micros();
+			}else
+			{
+				temp =	micros();
+				if((temp - HaltTime)>Time_outed){
+					Ultra_Stauts = Ultra_Restart; //休息够了，重新启动一次采集
+					HaltTime = 0;
+				}
 			}
 		 break;
 	case Ultra_Restart:	   //重启一次测距
