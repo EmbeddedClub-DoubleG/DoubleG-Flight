@@ -357,7 +357,7 @@ void Mode_Hold_Position(void)
 
 	if (PWM_Input_CH3 > (int16_t)(MINTHROTTLE + (MAXTHROTTLE - MINTHROTTLE) / 10))
 	{ //遥控器油门大于10% 定高才会起作用，防止误动作引起电机转动
-	    Quad_THR += Height_PID(MS5611_Altitude/100.0f);
+	    Quad_THR += Height_PID(Targe_high);
 	}
 	else
 	{
@@ -540,7 +540,7 @@ float Land_targethigh = 0.0f;//0是一个判断条件，==0表示未开始降落
 uint8_t High_Flag_IsLanded = 0;//是否已经到达地面；1：是，0：否。
 void Mode_Landing(void)
 {
-    float altitude = MS5611_Altitude/100.0f;
+    float altitude = Filter_Altitude/100.0f;
     uint32_t Land_nowtime=micros();
     static uint32_t Land_lasttime=1;//不要初始化为0，lasttime==0是一个判断条件
 

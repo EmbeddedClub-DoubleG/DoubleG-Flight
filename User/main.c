@@ -196,7 +196,7 @@ void GCS_Upload(void)
 		Temperature = MS5611_Temperature/10; //读取最近的温度值
 		Pressure = MS5611_Pressure;	   //读取最近的气压测量值
 		// Altitude = GetAltitude()/10.0f;	   //读取相对高度xiang:这里本来是用气压计的高度的//update20161227
-		Altitude = MS5611_Altitude/10.0f;	   //读取相对高度xiang:这里本来是用气压计的高度的
+		Altitude = Filter_Altitude/10.0f;	   //读取相对高度xiang:这里本来是用气压计的高度的
 		UART1_ReportIMU((int16_t)(ypr[0]*10.0f),(int16_t)(ypr[1]*10.0f),(int16_t)(ypr[2]*10.0f),//发送数据
 			Altitude,Temperature,Pressure/10,Math_hz*10);
 		UART1_Monitor_PID(Mon_PID_CH); //监控PID
@@ -245,7 +245,7 @@ void GCS_Upload(void)//xiang：注意：这个函数是针对自己写的上位�
 //	switch(Mon_Data)
 //	{
 //		case Mon_Height:
-//			UART1_ReportHeight((float)MS5611_Altitude/100.0f);
+//			UART1_ReportHeight((float)Filter_Altitude/100.0f);
 //			Mon_Data=Mon_No;
 //			break;
 //	}	
@@ -313,12 +313,12 @@ void GCS_GetCommand(unsigned char PC_comm)//xiang：注意：这个函数是针�
 	//LED_Set_Blink(Red,100,100,4);  // 红色的LED 闪烁表示正在处理 PC发送的命令
 	switch(PC_comm)//检查命令标识
 	{
-		case 0x10:			UART1_ReportHeight(MS5611_Altitude);		break; //监控高度 单位cm
+		case 0x10:			UART1_ReportHeight(Filter_Altitude);		break; //监控高度 单位cm
 		case 0x11:		    UART1_ReportTHR();		    break;
 		case 0x51://发送当前姿态角以及9轴传感器数据到营长GCS
 		   			UART1_ReportIMUMotion(ypr[0], ypr[1], ypr[2],
 					  						lastAx, lastAy, lastAz, lastGx, lastGy, lastGz, lastMx, lastMy, lastMz,
-					  						MS5611_Altitude/100.0f, MS5611_Temperature / 100.0f, MS5611_Pressure);
+					  						Filter_Altitude/100.0f, MS5611_Temperature / 100.0f, MS5611_Pressure);
 		    		break;
 		case 0x61:		    UART1_Report_PWMInOut();		    break;//将PWM输入和输出的脉宽值发送到PC
 		//上位机监控PID当前值和目标值

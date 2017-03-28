@@ -17,6 +17,8 @@
 #include "delay.h"
 #include "MS5611.h"
 #include "IMU.h"//update20161227:由于增加了超声波消除俯仰和横滚影响，所以使用了IMU_Roll和IMU_Pitch
+#include "AltitudeFilter.h"
+
 //------------超声波驱动状态机--------------
 #define Ultra_ST_Started   0x01	  //启动测距
 #define Ultra_ST_RX1       0x02	  //收到回波1
@@ -187,6 +189,8 @@ void Ultrasonic_Routine(void){
 				MS561101BA_SetAlt(Ultra_Distance);  //超声波 高度有效。标定气压高度。xiang：这里不仅标定了气压高度，还把超声波的数据存到了气压计的buffer里
 				Ultra_valid = MOVAVG_SIZE;
 			}
+			Ultra_ALT_Updated = 1;
+			Get_Filter_Altitude();
 			Ultra_Stauts = Ultra_ST_Idle;
 			break;
 	case Ultra_ST_Error:
