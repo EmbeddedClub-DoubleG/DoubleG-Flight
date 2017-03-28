@@ -410,13 +410,13 @@ void Mode_Hold_Position(void)
 			
 		  pidSetTarget_Measure(&Position_X_Hold,0,Xmove);
 			Position_X_MoveErr = Position_X_MoveErr
-			+ (Interval_dt / (15.9155e-3 + Interval_dt)) * (Math_fConstrain(Position_X_Hold.merror , -1000.0f , 1000.0f) - Position_X_MoveErr);
+			+ (Interval_dt / (15.9155e-3f + Interval_dt)) * (Math_fConstrain(Position_X_Hold.merror , -1000.0f , 1000.0f) - Position_X_MoveErr);
 			Position_SpeedTarget = pidUpdate_err(&Position_X_Hold,Position_X_MoveErr,Interval_dt);
 			Position_SpeedTarget = Math_fConstrain(Position_SpeedTarget,-200,+200);
 			pidSetTarget_Measure(&Position_X_Speed,Position_SpeedTarget,X_Speed);
 			Position_X_SpeedErr = Position_X_SpeedErr
-			+ (Interval_dt / (15.9155e-3 + Interval_dt)) * (Math_fConstrain(Position_X_Speed.merror , -250.0f , 250.0f) - Position_X_SpeedErr);
-			Output = pidUpdate_err(&Position_X_Speed,Position_X_SpeedErr,Interval_dt)/100.0;
+			+ (Interval_dt / (15.9155e-3f + Interval_dt)) * (Math_fConstrain(Position_X_Speed.merror , -250.0f , 250.0f) - Position_X_SpeedErr);
+			Output = pidUpdate_err(&Position_X_Speed,Position_X_SpeedErr,Interval_dt)/100.0f;
 			Output = Math_fConstrain(Output,-2.4,2.4);
 			Increas_Xspeed_Accumulat = Output;//增量式pid的输出的累加
 			Target_Roll = (- Increas_Xspeed_Accumulat) * 10;
@@ -460,13 +460,13 @@ void Mode_Hold_Position(void)
 
 			pidSetTarget_Measure(&Position_Y_Hold,0,Ymove);
 			Position_Y_MoveErr = Position_Y_MoveErr
-			+ (Interval_dt / (15.9155e-3 + Interval_dt)) * (Math_fConstrain(Position_Y_Hold.merror , -1000.0f , 1000.0f) - Position_Y_MoveErr);
+			+ (Interval_dt / (15.9155e-3f + Interval_dt)) * (Math_fConstrain(Position_Y_Hold.merror , -1000.0f , 1000.0f) - Position_Y_MoveErr);
 			Position_SpeedTarget = pidUpdate_err(&Position_Y_Hold,Position_Y_MoveErr,Interval_dt);
 			Position_SpeedTarget = Math_fConstrain(Position_SpeedTarget,-200,+200);
 			pidSetTarget_Measure(&Position_Y_Speed,Position_SpeedTarget,Y_Speed);
 			Position_Y_SpeedErr = Position_Y_SpeedErr
-			  + (Interval_dt / (15.9155e-3 + Interval_dt)) * (Math_fConstrain(Position_Y_Speed.merror , -250.0f , 250.0f) - Position_Y_SpeedErr);
-			Output = pidUpdate_err(&Position_Y_Speed,Position_Y_SpeedErr,Interval_dt)/100.0;
+			  + (Interval_dt / (15.9155e-3f + Interval_dt)) * (Math_fConstrain(Position_Y_Speed.merror , -250.0f , 250.0f) - Position_Y_SpeedErr);
+			Output = pidUpdate_err(&Position_Y_Speed,Position_Y_SpeedErr,Interval_dt)/100.0f;
 			Output = Math_fConstrain(Output,-2.4,2.4);
 			Increas_Yspeed_Accumulat = Output;//增量式pid的输出的累加
 			Target_Pitch = (Increas_Yspeed_Accumulat) * 10;

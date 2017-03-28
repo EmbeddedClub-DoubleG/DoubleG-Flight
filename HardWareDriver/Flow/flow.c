@@ -1,5 +1,5 @@
 #include "flow.h"
-#define MOVAVG_SIZE  10	   //±£´æ×î½üµÄÊ®¸öÊı¾İ½øĞĞÆ½¾ùÂË²¨
+#define MOVAVG_SIZE  10	   //ä¿å­˜æœ€è¿‘çš„åä¸ªæ•°æ®è¿›è¡Œå¹³å‡æ»¤æ³¢
 static float Dist_Xspeed_buffer[MOVAVG_SIZE] = {0};
 static float Dist_Yspeed_buffer[MOVAVG_SIZE] = {0};
 static uint8_t Dis_index = 0;
@@ -25,32 +25,32 @@ float Flow_XYspeed_getAvg(float * buff, int size)
 }
 
 
-//¶ÁÖ¸¶¨¼Ä´æÆ÷Ö¸¶¨×Ö½ÚÊıÊı¾İ
+//è¯»æŒ‡å®šå¯„å­˜å™¨æŒ‡å®šå­—èŠ‚æ•°æ•°æ®
 u8 flow_read_data(u8 addr,u8 reg,u8 len,u8 *buf)
 {
     IIC_Start(); 
-    IIC_Send_Byte((addr<<1)|0);//·¢ËÍÆ÷¼şµØÖ·+Ğ´ÃüÁî 
-    if(IIC_Wait_Ack())    //µÈ´ıÓ¦´ğ
+    IIC_Send_Byte((addr<<1)|0);//å‘é€å™¨ä»¶åœ°å€+å†™å‘½ä»¤ 
+    if(IIC_Wait_Ack())    //ç­‰å¾…åº”ç­”
     {
         IIC_Stop();         
         return 1;        
     }
-    IIC_Send_Byte(reg);    //Ğ´¼Ä´æÆ÷µØÖ·
-    IIC_Wait_Ack();        //µÈ´ıÓ¦´ğ
+    IIC_Send_Byte(reg);    //å†™å¯„å­˜å™¨åœ°å€
+    IIC_Wait_Ack();        //ç­‰å¾…åº”ç­”
     IIC_Start();
-    IIC_Send_Byte((addr<<1)|1);//·¢ËÍÆ÷¼şµØÖ·+¶ÁÃüÁî    
-    IIC_Wait_Ack();        //µÈ´ıÓ¦´ğ 
+    IIC_Send_Byte((addr<<1)|1);//å‘é€å™¨ä»¶åœ°å€+è¯»å‘½ä»¤    
+    IIC_Wait_Ack();        //ç­‰å¾…åº”ç­” 
     while(len)
     {
-        if(len==1)*buf=IIC_Read_Byte(0);//¶ÁÊı¾İ£¬·¢ËÍnACK
-        else *buf=IIC_Read_Byte(1);        //¶ÁÊı¾İ£¬·¢ËÍnACK
+        if(len==1)*buf=IIC_Read_Byte(0);//è¯»æ•°æ®ï¼Œå‘é€nACK
+        else *buf=IIC_Read_Byte(1);        //è¯»æ•°æ®ï¼Œå‘é€nACK
         len--;
         buf++; 
     }    
-    IIC_Stop();    //²úÉúÒ»¸öÍ£Ö¹Ìõ¼ş
+    IIC_Stop();    //äº§ç”Ÿä¸€ä¸ªåœæ­¢æ¡ä»¶
     return 0;    
 }
-//¶Á8Î»ÎŞ·ûºÅÊı¾İ
+//è¯»8ä½æ— ç¬¦å·æ•°æ®
 uint8_t     readu8_date(u8 addr,u8 reg)
 {
     u8 buff[1];
@@ -59,7 +59,7 @@ uint8_t     readu8_date(u8 addr,u8 reg)
     date = buff[0];
     return date;
 }
-//¶Á16Î»ÎŞ·ûºÅÊı¾İ
+//è¯»16ä½æ— ç¬¦å·æ•°æ®
 uint16_t    readu16_date(u8 addr,u8 reg)
 {
     u8 buff[2];
@@ -69,7 +69,7 @@ uint16_t    readu16_date(u8 addr,u8 reg)
     return date;
 
 }
-//¶Á16Î»ÓĞ·ûºÅÊı¾İ
+//è¯»16ä½æœ‰ç¬¦å·æ•°æ®
 int16_t     reads16_date(u8 addr,u8 reg)
 {
     u8 buff[2];
@@ -78,7 +78,7 @@ int16_t     reads16_date(u8 addr,u8 reg)
     date = buff[1] << 8 | buff[0];
     return date;
 }
-//¶Á32Î»ÎŞ·ûºÅÊı¾İ
+//è¯»32ä½æ— ç¬¦å·æ•°æ®
 uint32_t    readu32_date(u8 addr,u8 reg)
 {
     u8 buff[4];
@@ -87,7 +87,7 @@ uint32_t    readu32_date(u8 addr,u8 reg)
     date = buff[3] << 24 | buff[2] << 16 | buff[1] << 8 | buff[0];
     return date;
 }
-//¸üĞÂ¹âÁ÷Êı¾İ
+//æ›´æ–°å…‰æµæ•°æ®
 void FLOW_getData()
 {
 	short int speed[2];
@@ -111,16 +111,16 @@ void FLOW_getData()
 	
 
 	flow_read_data(FLOW_ADDR,0,47,flowdata);
-	speed[0] = (flowdata[7]<<8)|flowdata[6]; //XÖáËÙ¶È
-	speed[1] = (flowdata[9]<<8)|flowdata[8]; //YÖáËÙ¶È
-	Flow_XYspeed_NewDis(speed[0],speed[1]);  //·ÅÈë»¬¶¯¶ÓÁĞ£¬È¡¾ùÖµ
+	speed[0] = (flowdata[7]<<8)|flowdata[6]; //Xè½´é€Ÿåº¦
+	speed[1] = (flowdata[9]<<8)|flowdata[8]; //Yè½´é€Ÿåº¦
+	Flow_XYspeed_NewDis(speed[0],speed[1]);  //æ”¾å…¥æ»‘åŠ¨é˜Ÿåˆ—ï¼Œå–å‡å€¼
 	X_Speed = Flow_XYspeed_getAvg( Dist_Xspeed_buffer, MOVAVG_SIZE);
 	Y_Speed = Flow_XYspeed_getAvg( Dist_Yspeed_buffer, MOVAVG_SIZE);
 	
 	X_Speed = Last_X_Speed + 
-	(dt / (15.9155e-3 + dt) * X_Speed - Last_X_Speed);
+	(dt / (15.9155e-3f + dt) * X_Speed - Last_X_Speed);
 	Y_Speed = Last_Y_Speed + 
-	(dt / (15.9155e-3 + dt) * Y_Speed - Last_Y_Speed);
+	(dt / (15.9155e-3f + dt) * Y_Speed - Last_Y_Speed);
 	Last_X_Speed = X_Speed;
 	Last_Y_Speed = Y_Speed;
 
