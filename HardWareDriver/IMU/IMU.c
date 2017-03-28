@@ -30,6 +30,69 @@ float acc_vector = 0;  //当前加速度感应到的力合  M/S^2
 volatile float Motion_Accx = 0, Motion_Accy = 0, Motion_Accz = 0;
 volatile float Motion_Velocity_X = 0, Motion_Velocity_Y = 0, Motion_Velocity_Z = 0;
 volatile float Position_X = 0, Position_Y = 0, Position_Z = 0;
+//计算xyz方向加速度的均值滤波
+#define MOVAVG_SIZE  10
+// float Acc_buffer_X[MOVAVG_SIZE]={0};
+// float Acc_buffer_Y[MOVAVG_SIZE]={0};
+// float Acc_buffer_Z[MOVAVG_SIZE]={0};
+// uint32_t Acc_index = 0;//accxyz三个buffer共用一个index，每次添加新值都一起添加
+float Motion_Acc_buffer_X[MOVAVG_SIZE]={0};
+float Motion_Acc_buffer_Y[MOVAVG_SIZE]={0};
+float Motion_Acc_buffer_Z[MOVAVG_SIZE]={0};
+uint32_t Motion_Acc_index = 0;
+float Acc_vector_buffer[MOVAVG_SIZE] = {0}; //update20170314:计算合加速度的均值滤波
+uint32_t Acc_vector_index = 0;
+uint32_t Acc_lastUpdateTime = 0;
+uint32_t Velocity_lastUpdateTime = 0;
+uint32_t Position_lastUpdateTime = 0;
+float Motion_Velocity_dt = 0;
+float Motion_Position_dt = 0;
+
+void Motion_Acc_NewValue(float motion_accx,float motion_accy,float motion_accz)
+{	 
+	Motion_Acc_buffer_X[Motion_Acc_index] = motion_accx;
+	Motion_Acc_buffer_Y[Motion_Acc_index] = motion_accy;
+	Motion_Acc_buffer_Z[Motion_Acc_index] = motion_accz;
+	Motion_Acc_index++;
+	if(Motion_Acc_index>=MOVAVG_SIZE)
+	{
+		Motion_Acc_index -= MOVAVG_SIZE;
+	}
+}
+//添加一个新的值到 加速度队列 进行滤波
+// void Acc_NewValue(float accx,float accy,float accz)
+// {	 
+// 	Acc_buffer_X[Acc_index] = accx;
+// 	Acc_buffer_Y[Acc_index] = accy;
+// 	Acc_buffer_Z[Acc_index] = accz;
+// 	Acc_index++;
+// 	if(Acc_index>=MOVAVG_SIZE)
+// 	{
+// 		Acc_index -= MOVAVG_SIZE;
+// 	}
+// }
+void AccVector_NewValue(float accvector)
+{
+	Acc_vector_buffer[Acc_vector_index] = accvector;
+	Acc_vector_index++;
+	if(Acc_vector_index>=MOVAVG_SIZE)
+	{
+		Acc_vector_index -= MOVAVG_SIZE;
+	}
+}
+
+//读取队列 的平均值
+float Acc_GetAvg(float *buff)
+{
+	float sum = 0.0;
+	int i;
+	for (i = 0; i < MOVAVG_SIZE; i++)
+	{
+		sum += buff[i];
+	}
+	return (sum / MOVAVG_SIZE);
+}
+
 // Fast inverse square-root
 /**************************实现函数********************************************
 *函数原型:	   float invSqrt(float x)
@@ -87,6 +150,11 @@ void IMU_init(void)
 	integralFBz	= 0.0;
 	IMU_lastUpdateTime = micros();//更新时间
 	//IMU_nowtime = micros();
+	Position_lastUpdateTime = Velocity_lastUpdateTime = Acc_lastUpdateTime = IMU_lastUpdateTime = micros(); //更新时间//update20170314
+	for (i = 0; i < MOVAVG_SIZE; i++)
+    {
+		Acc_vector_buffer[i] = 9.65f;
+	}
 }
 
 /**************************实现函数********************************************
@@ -181,7 +249,6 @@ void IMU_AHRSupdate(float gx, float gy, float gz, float ax, float ay, float az, 
 	mx = mx * norm;
 	my = my * norm;
 	mz = mz * norm;
-//书签，10月24日0:32看到这里。主要想找的答案：姿态融合是怎么进行的，有没有卡尔曼滤波，mpu6500硬件有没有姿态融合或者滤波算法，mpu6500的fifo内存是干什么用的。
 	// compute reference direction of flux
 	hx = 2*mx*(0.5f - q2q2 - q3q3) + 2*my*(q1q2 - q0q3) + 2*mz*(q1q3 + q0q2);
 	hy = 2*mx*(q1q2 + q0q3) + 2*my*(0.5f - q1q1 - q3q3) + 2*mz*(q2q3 - q0q1);
@@ -367,49 +434,131 @@ void IMU_getYawPitchRoll(float * angles) {
 *******************************************************************************/
 void Get_Motion_Acc(void)
 {
-//学长的代码
-	//   float temp,roll_differ,pitch_differ;
-	//   int direction_roll,direction_pitch;
-	//  // IMU_getValues(acc);	  
-	//   ACC_NewValue();
-	//   acc[0] = Acc_getAvg(Accx_buffer,MOVAVG_SIZE);
-	//   acc[1] = Acc_getAvg(Accy_buffer,MOVAVG_SIZE);
+//update20170312加速度计倾角补偿
+	float q[4];	
+	float norm;
+	float temp;
+	float Motion_ACC_dt = 0;
+	uint32_t nowTime;
+	nowTime = micros();  //读取时间
 
-	// 	//用加速度计算roll、pitch
-	//   temp = acc[0] * invSqrt((acc[1] * acc[1] + acc[2] * acc[2]));
-	//   ACC_Pitch = atan(temp);
-	//   temp = acc[1] * invSqrt((acc[0] * acc[0] + acc[2] * acc[2]));
-	//   ACC_Roll = atan(temp);	
-	
-	//   roll_differ = IMU_Roll* M_PI/180 - ACC_Roll;
-	//   pitch_differ = IMU_Pitch* M_PI/180 - ACC_Pitch;
-	
-	//   if(roll_differ < 0.0f)
+	if (nowTime < Acc_lastUpdateTime)
+	{ //定时器溢出过了。
+	    Motion_ACC_dt = ((float)(nowTime + (0xffffffff - Acc_lastUpdateTime)) / 1000000.0f);
+	    Acc_lastUpdateTime = nowTime;
+	    return;
+	}
+	else
+	{
+	    Motion_ACC_dt = ((float)(nowTime - Acc_lastUpdateTime) / 1000000.0f);
+	}
+	Acc_lastUpdateTime = nowTime;
+
+	q[0] = qa0;
+	q[1] = qa1;
+	q[2] = qa2;
+	q[3] = qa3;
+	norm = invSqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+	q[0] = q[0] * norm;
+	q[1] = q[1] * norm;
+	q[2] = q[2] * norm;
+	q[3] = q[3] * norm;
+	temp = ((float)lastAx * (2.0f * (q[1] * q[3] - q[0] * q[2]))
+				 + (float)lastAy * (2.0f * (q[0] * q[1] + q[2] * q[3]))
+				 + (float)lastAz * (q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]))
+				//  / 16384.0f * 9.8f - Config.ACC_z_zero + 0.04f;//xiang:这个0.0337是我统计出来的在静止时acc_vector与Motion_Accz的差
+				 / 16384.0f * 9.8f - Config.ACC_z_zero;
+	Motion_Accz = Acc_GetAvg(Motion_Acc_buffer_Z);
+	Motion_Accz = Motion_Accz +   //低通滤波。截止频率20hz
+				(Motion_ACC_dt / (7.9577e-3f + Motion_ACC_dt)) * (temp - Motion_Accz);
+	Motion_Acc_NewValue(Motion_Accx, Motion_Accy, Motion_Accz);
+//水平方向用学长的代码，垂直方向用自己的代码
+	// float q[4];	
+	// float norm;
+	// float temp;
+	// float Motion_Acc_dt = 0;
+	// uint32_t nowTime;
+	// float roll_differ, pitch_differ;
+	// int direction_roll, direction_pitch;
+	// float acc[3];
+	// float Acc_Pitch,Acc_Roll;
+
+	// nowTime = micros();  //读取时间
+	// if (nowTime < Acc_lastUpdateTime)
+	// { //定时器溢出过了。
+	//     Motion_Acc_dt = ((float)(nowTime + (0xffffffff - Acc_lastUpdateTime)) / 1000000.0f);
+	//     Acc_lastUpdateTime = nowTime;
+	//     return;
+	// }
+	// else
+	// {
+	//     Motion_Acc_dt = ((float)(nowTime - Acc_lastUpdateTime) / 1000000.0f);
+	// }
+	// Acc_lastUpdateTime = nowTime;
+
+	// // Acc_NewValue(lastAx,lastAy,lastAz);
+	// // acc[0] = Acc_GetAvg(Acc_buffer_X);
+	// // acc[1] = Acc_GetAvg(Acc_buffer_Y);
+	// // acc[2] = Acc_GetAvg(Acc_buffer_Z);
+	// acc[0]=lastAx;
+	// acc[1]=lastAy;
+	// acc[2]=lastAz;
+
+	// q[0] = qa0;
+	// q[1] = qa1;
+	// q[2] = qa2;
+	// q[3] = qa3;
+	// norm = invSqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+	// q[0] = q[0] * norm;
+	// q[1] = q[1] * norm;
+	// q[2] = q[2] * norm;
+	// q[3] = q[3] * norm;
+	// temp = ((float)lastAx * (2.0f * (q[1] * q[3] - q[0] * q[2]))
+	// 			 + (float)lastAy * (2.0f * (q[0] * q[1] + q[2] * q[3]))
+	// 			 + (float)lastAz * (q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]))
+	// 			//  / 16384.0f * 9.8f - Config.ACC_z_zero + 0.04f;//xiang:这个0.0337是我统计出来的在静止时acc_vector与Motion_Accz的差
+	// 			 / 16384.0f * 9.8f - Config.ACC_z_zero;//xiang:这个0.0337是我统计出来的在静止时acc_vector与Motion_Accz的差
+	// Motion_Accz = Motion_Accz +   //低通滤波。截止频率20hz
+	// 			(Motion_Acc_dt / (7.9577e-3f + Motion_Acc_dt)) * (temp - Motion_Accz);
+
+	// //用加速度计算roll、pitch
+	// temp = acc[0] * invSqrt((acc[1] * acc[1] + acc[2] * acc[2]));
+	// Acc_Pitch = atan(temp);
+	// temp = acc[1] * invSqrt((acc[0] * acc[0] + acc[2] * acc[2]));
+	// Acc_Roll = atan(temp);
+
+	// roll_differ = IMU_Roll * M_PI / 180 - Acc_Roll;
+	// pitch_differ = IMU_Pitch * M_PI / 180 - Acc_Pitch;
+
+	// if (roll_differ < 0.0f)
 	//     direction_roll = -1;
-	// 	else
-	// 		direction_roll = 1;
-	// 	if(pitch_differ < 0.0f)
-	// 		direction_pitch = -1;
-	// 	else
-	// 		direction_pitch = 1;
-		
-	// 	roll_differ = tan(roll_differ);
-	// 	pitch_differ = tan(pitch_differ);
-	//   roll_differ = roll_differ * roll_differ;
-	// 	pitch_differ = pitch_differ * pitch_differ;
-	// 	acc[2] = acc[2] * acc[2];
-	// 	temp = (1 - roll_differ * pitch_differ);
-		
-	// 	if(direction_pitch < 0)
-	// 	  Motion_Accx = (- sqrt( ( (roll_differ + 1) * pitch_differ * acc[2] )/ temp)/ 16384 * 9.8f);
-	// 	else
-	// 		 Motion_Accx = ( sqrt( ( (roll_differ + 1) * pitch_differ * acc[2] )/ temp)/ 16384 * 9.8f);
-	// 	if(direction_roll < 0)
-	// 	  Motion_Accy = (- sqrt( ( (pitch_differ + 1) * roll_differ * acc[2] )/ temp)/ 16384 * 9.8f);
-	// 	else
-	// 		 Motion_Accy = ( sqrt( ( (pitch_differ + 1) * roll_differ * acc[2] )/ temp)/ 16384 * 9.8f);
-//update20170110
-	Motion_Accz = (acc_vector - Config.ACC_z_zero);//单位m/s
+	// else
+	//     direction_roll = 1;
+	// if (pitch_differ < 0.0f)
+	//     direction_pitch = -1;
+	// else
+	//     direction_pitch = 1;
+
+	// roll_differ = tan(roll_differ);
+	// pitch_differ = tan(pitch_differ);
+	// roll_differ = roll_differ * roll_differ;
+	// pitch_differ = pitch_differ * pitch_differ;
+	// acc[2] = acc[2] * acc[2];
+	// temp = (1 - roll_differ * pitch_differ);
+
+	// if (direction_pitch < 0)
+	//     Motion_Accx = (-sqrt(((roll_differ + 1) * pitch_differ * acc[2]) / temp) / 16384 * 9.8f);
+	// else
+	//     Motion_Accx = (sqrt(((roll_differ + 1) * pitch_differ * acc[2]) / temp) / 16384 * 9.8f);
+	// if (direction_roll < 0)
+	//     Motion_Accy = (-sqrt(((pitch_differ + 1) * roll_differ * acc[2]) / temp) / 16384 * 9.8f);
+	// else
+	//     Motion_Accy = (sqrt(((pitch_differ + 1) * roll_differ * acc[2]) / temp) / 16384 * 9.8f);
+
+	// Motion_Acc_NewValue(Motion_Accx, Motion_Accy, Motion_Accz);
+	// Motion_Accx = Acc_GetAvg(Motion_Acc_buffer_X);
+	// Motion_Accy = Acc_GetAvg(Motion_Acc_buffer_Y);
+	// Motion_Accz = Acc_GetAvg(Motion_Acc_buffer_Z);
 }
 
 /**************************实现函数********************************************
@@ -420,85 +569,34 @@ void Get_Motion_Acc(void)
 *******************************************************************************/
 void Get_Motion_Velocity()
 {
-//学长的代码
-	//   float time;
-	//  //TODO: xiang：这里为什么要把这行注释掉？
-	//   //Get_Motion_Acc();
-	//   now2 = micros();  //读取时间
-	// if(now2 < lastUpdate2){ //定时器溢出过了。
-	// 	time =  ((float)(now2 + (0xffffffff- lastUpdate2)) / 1000000.0f);	
-	// 	lastUpdate2 = now2;
-	// 	return ;
-	// }
-	// else{
-	// 	time =  ((float)(now2 - lastUpdate2) / 1000000.0f);
-	// 	}
-	//   lastUpdate2 = now2;	//更新时间
-	// 	//对运动加速度做积分求运动速度
-	// 	Motion_Velocity_X += Motion_Accx * time;
-	// 	Motion_Velocity_Y += Motion_Accy * time;
 //update20170110
-	static int32_t lastUpdateTime = 0;
-	int32_t nowTime = micros();  //读取时间
-	double Motion_Velocity_dt = 0;
+	static float Motion_Accx_last = 0, Motion_Accy_last = 0, Motion_Accz_last = 0;
+	uint32_t nowTime;
+	nowTime = micros();  //读取时间
 	Get_Motion_Acc();
-	if (nowTime < lastUpdateTime)
+
+	if (nowTime < Velocity_lastUpdateTime)
 	{ //定时器溢出过了。
-	    Motion_Velocity_dt = ((float)(nowTime + (0xffffffff - lastUpdateTime)) / 1000000.0f);
-	    lastUpdateTime = nowTime;
+	    Motion_Velocity_dt = ((float)(nowTime + (0xffffffff - Velocity_lastUpdateTime)) / 1000000.0f);
+	    Velocity_lastUpdateTime = nowTime;
 	    return;
 	}
 	else
 	{
-	    Motion_Velocity_dt = ((float)(nowTime - lastUpdateTime) / 1000000.0f);
+	    Motion_Velocity_dt = ((float)(nowTime - Velocity_lastUpdateTime) / 1000000.0f);
 	}
-	lastUpdateTime = nowTime;
+	Velocity_lastUpdateTime = nowTime;
+
 	//对运动加速度做积分求运动速度
-	Motion_Velocity_X += Motion_Accx * Motion_Velocity_dt;
-	Motion_Velocity_Y += Motion_Accy * Motion_Velocity_dt;
-	Motion_Velocity_Z += Motion_Accz * Motion_Velocity_dt;
+	Motion_Velocity_X += ((Motion_Accx + Motion_Accx_last) * Motion_Velocity_dt) / 2.0f;
+	Motion_Velocity_Y += ((Motion_Accy + Motion_Accy_last) * Motion_Velocity_dt) / 2.0f;
+	Motion_Velocity_Z += ((Motion_Accz + Motion_Accz_last) * Motion_Velocity_dt) / 2.0f;
+	Motion_Accx_last = Motion_Accx;
+	Motion_Accy_last = Motion_Accy;
+	Motion_Accz_last = Motion_Accz;
 }
 
-// //添加一个新的值到 加速度队列 进行滤波
-// void ACC_NewValue() {
-// 	IMU_getValues(acc);
-// 	Accx_buffer[acc_index] = acc[0];
-// 	Accy_buffer[acc_index] = acc[1];
-// 	acc_index = (acc_index + 1) % MOVAVG_SIZE;//循环更新
-// }
-
-// //读取队列 的平均值
-// float Acc_getAvg(float * buff, int size) {
-// 	float sum = 0.0;
-// 	int i;
-// 	for(i=0; i<size; i++) {
-// 		sum += buff[i];
-// 	}
-// 	return sum / size;
-// }
-
-// /**************************实现函数********************************************
-// *函数原型:	   void DJI_SDK_Attitude(void)
-// *功　　能:  用SDK推出的四元数解姿态
-// 输入参数：没有
-// 输出参数：没有
-// *******************************************************************************/
-// void DJI_SDK_Attitude()
-// {
-	
-// 	SDK_Roll = (atan2(2.0f*(dji_sdk_data.q.q0 * dji_sdk_data.q.q1 + dji_sdk_data.q.q2 * dji_sdk_data.q.q3),
-// 	                     1 - 2.0f*(dji_sdk_data.q.q1 * dji_sdk_data.q.q1 + dji_sdk_data.q.q2 * dji_sdk_data.q.q2)))* 180/M_PI;
-// 	  // we let safe_asin() handle the singularities near 90/-90 in pitch
-// 	SDK_Pitch = safe_asin(2.0f*(dji_sdk_data.q.q0*dji_sdk_data.q.q2 - dji_sdk_data.q.q3*dji_sdk_data.q.q1))* 180/M_PI;
-
-// 	SDK_Yaw = -atan2(2 * dji_sdk_data.q.q1 * dji_sdk_data.q.q2 + 2 * dji_sdk_data.q.q0 * dji_sdk_data.q.q3,
-// 	              	-2 * dji_sdk_data.q.q2 * dji_sdk_data.q.q2 - 2 * dji_sdk_data.q.q3 * dji_sdk_data.q.q3 + 1);//* 180/M_PI; // yaw
-	
-// 	sdk_body_v_pitch	= dji_sdk_data.v.x * cos(SDK_Yaw) - dji_sdk_data.v.y * sin(SDK_Yaw);
-// 	sdk_body_v_roll = dji_sdk_data.v.x * sin(SDK_Yaw) + dji_sdk_data.v.y * cos(SDK_Yaw);
-// }
-
-/**************************实现函数********************************************
+ /**************************实现函数********************************************
 *函数原型:	   void Get_Position(void)
 *功　　能:  使用加速度计算位置。
 输入参数：没有
@@ -506,53 +604,30 @@ void Get_Motion_Velocity()
 *******************************************************************************/
 void Get_Position()
 {
-//学长的代码
-	// 	float time;
-	//   Get_Motion_Velocity();
-	//   now2 = micros();  //读取时间
-	//   if(now2 < lastUpdate2){ //定时器溢出过了。
-	// 	time =  ((float)(now2 + (0xffffffff- lastUpdate2)) / 1000000.0f);	
-	// 	lastUpdate2 = now2;
-	// 	return ;
-	// }
-	// else{
-	// 	time =  ((float)(now2 - lastUpdate2) / 1000000.0f);
-	// 	}
-	//   lastUpdate2 = now2;	//更新时间
-	
-	// 	Velocity_x_now = Motion_Velocity_X;
-	//   Velocity_y_now = Motion_Velocity_Y;
-		
-	// 	Position_X += ((Velocity_x_now + Velocity_x_last) * time) /2.0f;
-	// 	Position_Y += ((Velocity_y_now + Velocity_y_last) * time) /2.0f;
-		
-	// 	Velocity_x_last = Velocity_x_now;
-	//   Velocity_y_last = Velocity_x_now;
-//update20170110
-	static int32_t lastUpdateTime = 0;
-	int32_t nowTime = micros();  //读取时间
-	double Motion_Position_dt = 0;
-	static float Velocity_x_last = 0, Velocity_y_last = 0, Velocity_z_last = 0;
-	Get_Motion_Velocity();
-	if (nowTime < lastUpdateTime)
-	{ //定时器溢出过了。
-	    Motion_Position_dt = ((float)(nowTime + (0xffffffff - lastUpdateTime)) / 1000000.0f);
-	    lastUpdateTime = nowTime;
-	    return;
-	}
-	else
-	{
-	    Motion_Position_dt = ((float)(nowTime - lastUpdateTime) / 1000000.0f);
-	}
-	lastUpdateTime = nowTime;
+    //update20170110
+	uint32_t nowTime;
+    static float Velocity_x_last = 0, Velocity_y_last = 0, Velocity_z_last = 0;
+	nowTime = micros();  //读取时间
+    Get_Motion_Velocity();
+    if (nowTime < Position_lastUpdateTime)
+    { //定时器溢出过了。
+		Motion_Position_dt = ((float)(nowTime + (0xffffffff - Position_lastUpdateTime)) / 1000000.0f);
+		Position_lastUpdateTime = nowTime;
+		return;
+    }
+    else
+    {
+		Motion_Position_dt = ((float)(nowTime - Position_lastUpdateTime) / 1000000.0f);
+    }
+    Position_lastUpdateTime = nowTime;
 
 	Position_X += ((Motion_Velocity_X + Velocity_x_last) * Motion_Position_dt) / 2.0f;
 	Position_Y += ((Motion_Velocity_Y + Velocity_y_last) * Motion_Position_dt) / 2.0f;
-	Position_Z += ((Motion_Velocity_Z + Velocity_z_last) * Motion_Position_dt) / 2.0f;
+    Position_Z += ((Motion_Velocity_Z + Velocity_z_last) * Motion_Position_dt) / 2.0f;
 
 	Velocity_x_last = Motion_Velocity_X;
 	Velocity_y_last = Motion_Velocity_Y;
-	Velocity_z_last = Motion_Velocity_Z;
+    Velocity_z_last = Motion_Velocity_Z;
 }
 
 //------------------End of File----------------------------

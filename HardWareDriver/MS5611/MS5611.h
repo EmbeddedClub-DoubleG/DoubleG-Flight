@@ -31,18 +31,12 @@
 //Other
 #define MSLP                    101325          // Mean Sea Level Pressure = 1013.25 hPA (1hPa = 100Pa = 1mbar)
 
-//  Temperature in 0.01C
-//  Pressure    in 0.01mbar = Pa
-//  Altitude    in meter  / cm
-extern float MS5611_Temperature,MS5611_Pressure,MS5611_Altitude;
-extern float ALT_Update_Interval;
-extern uint8_t ALT_Updated ; //气压计高度更新完成标志。
-extern uint8_t Ultra_IsUseful;//update20161227:新增:是否只使用超声波数据标识,==1的时候不使用气压计,这个变量的值有超声波数据健康度决定
-// extern float MS5611_Debug_D;
+extern float MS5611_Temperature,MS5611_Pressure,MS5611_Altitude;//单位 [温度 0.01度] [气压 帕]  [高度0.01米] 
+extern float MS5611_ALT_Update_Interval;
+extern uint8_t MS5611_ALT_Updated ; //气压计高度更新完成标志。
 void MS561101BA_init(void);
 void MS5611BA_Routing(void);
 void MS561101BA_ResetAlt(void);
-float MS5611BA_Get_D(void);
 void MS561101BA_SetAlt(float Current);
 
 #endif
