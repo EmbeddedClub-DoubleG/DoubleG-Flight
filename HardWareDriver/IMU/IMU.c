@@ -122,36 +122,37 @@ float invSqrt(float x)
 输出参数：没有
 *******************************************************************************/
 void IMU_init(void)
-{	 
-	LSM303_Initial(); 
-	MPU6500_initialize();
-	delay_ms(50);
-	MPU6500_initialize();
-	LSM303_Initial();
-	delay_ms(50);
-	MPU6500_initialize();
-	LSM303_Initial();
-	MS561101BA_init();
-	// initialize quaternion
-	q0 = 1.0f;  //初始化四元数
-	q1 = 0.0f;
-	q2 = 0.0f;
-	q3 = 0.0f;
-	qa0 = 1.0f;  //初始化四元数
-	qa1 = 0.0f;
-	qa2 = 0.0f;
-	qa3 = 0.0f;
-	exInt = 0.0;
-	eyInt = 0.0;
-	ezInt = 0.0;
-	
-	integralFBx = 0.0;
-	integralFBy = 0.0; 
-	integralFBz	= 0.0;
-	IMU_lastUpdateTime = micros();//更新时间
-	//IMU_nowtime = micros();
-	Position_lastUpdateTime = Velocity_lastUpdateTime = Acc_lastUpdateTime = IMU_lastUpdateTime = micros(); //更新时间//update20170314
-	for (i = 0; i < MOVAVG_SIZE; i++)
+{
+    int i;
+    LSM303_Initial();
+    MPU6500_initialize();
+    delay_ms(50);
+    MPU6500_initialize();
+    LSM303_Initial();
+    delay_ms(50);
+    MPU6500_initialize();
+    LSM303_Initial();
+    MS561101BA_init();
+    // initialize quaternion
+    q0 = 1.0f; //初始化四元数
+    q1 = 0.0f;
+    q2 = 0.0f;
+    q3 = 0.0f;
+    qa0 = 1.0f; //初始化四元数
+    qa1 = 0.0f;
+    qa2 = 0.0f;
+    qa3 = 0.0f;
+    exInt = 0.0;
+    eyInt = 0.0;
+    ezInt = 0.0;
+
+    integralFBx = 0.0;
+    integralFBy = 0.0;
+    integralFBz = 0.0;
+    IMU_lastUpdateTime = micros(); //更新时间
+    //IMU_nowtime = micros();
+    Position_lastUpdateTime = Velocity_lastUpdateTime = Acc_lastUpdateTime = IMU_lastUpdateTime = micros(); //更新时间//update20170314
+    for (i = 0; i < MOVAVG_SIZE; i++)
     {
 		Acc_vector_buffer[i] = 9.65f;
 	}
