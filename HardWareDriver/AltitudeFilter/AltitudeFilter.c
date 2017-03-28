@@ -23,25 +23,26 @@ void Get_Filter_Altitude(void)
     float altitude;
     if(Ultra_Healthy>15)//使用超声波为主
     {
-        if(1==Ultra_ALT_Updated)
+        if (Ultra_ALT_Updated == 1)
         {
-            evaluateAltitude = (Filter_Altitude_D + D2_Alt) * ALT_Update_Interval + Filter_Altitude;
-            if ((evaluateAltitude + 5.0f) >= altitude && (evaluateAltitude - 5.0f) <= altitude)
-            {
-                altitude = 90.0f * Ultra_Distance + 10.0f * Position_Z;
-            }
-            else
-            {
-                if (MS5611_ALT_Updated == 1)
-                {
-                    altitude = 1.0f * Ultra_Distance + 98.0f * Position_Z + 0.01f * MS5611_Altitude;
-                    MS5611_ALT_Updated = 0;
-                }
-                else
-                {
-                    altitude = 1.0f * Ultra_Distance + 99.0f * Position_Z;
-                }
-            }
+            // evaluateAltitude = (Filter_Altitude_D + D2_Alt) * ALT_Update_Interval + Filter_Altitude;
+            // if ((evaluateAltitude + 5.0f) >= altitude && (evaluateAltitude - 5.0f) <= altitude)
+            // {
+            //     altitude = 90.0f * Ultra_Distance + 10.0f * Position_Z;
+            // }
+            // else
+            // {
+            //     if (MS5611_ALT_Updated == 1)
+            //     {
+            //         altitude = 1.0f * Ultra_Distance + 98.0f * Position_Z + 0.01f * MS5611_Altitude;
+            //         MS5611_ALT_Updated = 0;
+            //     }
+            //     else
+            //     {
+            //         altitude = 1.0f * Ultra_Distance + 99.0f * Position_Z;
+            //     }
+            // }
+            altitude = Ultra_Distance * 100.0f;
             Ultra_ALT_Updated = 0;
         }
         else
@@ -51,14 +52,15 @@ void Get_Filter_Altitude(void)
     {
         if(MS5611_ALT_Updated == 1)
         {
-            altitude = 0.15f * MS5611_Altitude + 85.0f * Position_Z;
+            // altitude = 0.15f * MS5611_Altitude + 85.0f * Position_Z;
+            altitude = MS5611_Altitude;
             MS5611_ALT_Updated = 0;
         }
         else
             return;
     }
-    Filter_Altitude = FiltAlt_getAvg(FiltAlt_Buff, MOVAVG_SIZE);
-    Filter_Altitude = Filter_Altitude + (ALT_Update_Interval / (ALT_Update_Interval + FiltAlt_Lowpass)) * (altitude - Filter_Altitude);
+    // Filter_Altitude = Filter_Altitude + (ALT_Update_Interval / (ALT_Update_Interval + FiltAlt_Lowpass)) * (altitude - Filter_Altitude);
+    Filter_Altitude=altitude;
     FiltAlt_NewAlt(altitude);
     Altitude_Get_D();
 }
