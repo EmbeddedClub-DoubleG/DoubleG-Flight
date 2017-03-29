@@ -354,12 +354,12 @@ void GCS_GetCommand(unsigned char PC_comm)//xiang：注意：这个函数是针�
 		    break;
 		//读取上位机控制命令
 		//ch1增加往右，ch2增加往前，ch4增加往右
-		case 0xc1:		    GCSControl_CH2 = 35;			break;//前进
-		case 0xc2:		    GCSControl_CH2 = -35;		    break;//后退
-		case 0xc3:		    GCSControl_CH1 = -35;		    break;//左倾
-		case 0xc4:		    GCSControl_CH1 = 35;		    break;//右倾
-		case 0xc5:		    GCSControl_CH4 = -35;		    break;//左转
-		case 0xc6:		    GCSControl_CH4 = 35;		    break;//右转
+		case 0xc1:		    GCSControl_CH2 = 75;			break;//前进
+		case 0xc2:		    GCSControl_CH2 = -75;		    break;//后退
+		case 0xc3:		    GCSControl_CH1 = -75;		    break;//左倾
+		case 0xc4:		    GCSControl_CH1 = 75;		    break;//右倾
+		case 0xc5:		    GCSControl_CH4 = -100;		    break;//左转
+		case 0xc6:		    GCSControl_CH4 = 100;		    break;//右转
 		case 0xc7:
 		    GCSControl_CH1 = 0;
 		    GCSControl_CH2 = 0;
