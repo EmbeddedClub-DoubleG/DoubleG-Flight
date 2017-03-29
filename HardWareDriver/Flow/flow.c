@@ -88,7 +88,7 @@ uint32_t    readu32_date(u8 addr,u8 reg)
     return date;
 }
 //更新光流数据
-void FLOW_getData()
+void FLOW_getData(void)
 {
 	short int speed[2];
 	uint32_t now_time;

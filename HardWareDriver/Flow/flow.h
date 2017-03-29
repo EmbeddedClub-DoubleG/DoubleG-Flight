@@ -67,7 +67,7 @@ int16_t     reads16_date(u8 addr,u8 reg);
 //读32位无符号数据
 uint32_t    readu32_date(u8 addr,u8 reg);
 //更新光流数据
-void FLOW_getData();
+void FLOW_getData(void);
 
 extern unsigned char flowdata[47];
 extern short int X_Speed,Y_Speed;
