@@ -27,7 +27,7 @@ extern int16_t THROTTLE,PID_ROLL,PID_PITCH,PID_YAW;
 extern volatile float PID_dt;
 extern int16_t PWM_Offset_Roll,PWM_Offset_Pitch,PWM_Offset_Yaw;
 extern volatile uint8_t Quadrotor_Mode;	//飞行模式
-
+extern float Tartget_hight;
 //光流定点相关全局变量
 extern float RollAdd,PitchAdd;
 

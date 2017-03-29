@@ -10,9 +10,8 @@ volatile uint8_t  Fly_Mode = default_quad; //飞行器的架构，默认十字�
 volatile int16_t  Yaw_DIRECT = 1;//航向是否取反
 int16_t THROTTLE = MINTHROTTLE, PID_ROLL = 0, PID_PITCH = 0, PID_YAW = 0;
 volatile float PID_dt = 0;
-volatile float Quad_Pitch,Quad_Roll,Quad_Yaw,Quad_THR=MINTHROTTLE;//update20161226:添加了Quad_Pitch,Quad_Roll,Quad_Yaw这几个变量，虽然没用到
 volatile uint8_t Quadrotor_Mode = Quad_Manual; 	//当前的飞行模式，手动，平衡，定点等
-
+float Tartget_hight = 0.0;
 //定高相关变量
 //光流定点相关全局变量
 volatile float Increas_Xspeed_Accumulat=0;//增量式pid的输出的累加
@@ -60,8 +59,10 @@ void Quadrotor_Motor_Update(void)
 	
 	mode=Read_Mode();//读取工作模式。通过PWM5、PWM6输入值判断
 	Change_Mode(mode);//切换飞行模式
-	Lock_Target_Yaw();//目标航向控制。当油门大于1100us时，认为用户希望起飞。那么此时的航向做为目标航向	
 	Led_Quad_Mode();//LED指示飞行模式
+	Get_Throttle();
+	Lock_Target_Yaw();//目标航向控制。当油门大于1100us时，认为用户希望起飞。那么此时的航向做为目标航向
+	Get_Tartget_RPY();//遥控信号的转换
 	
 //--------------------相应的飞行模块PWM输出运算-------------------------------------
 	switch(Quadrotor_Mode)//检测当前状态
@@ -265,8 +266,6 @@ void Mode_Manual(void)
 *******************************************************************************/
 void Mode_Level_Lock(void)
 {
-	Get_Tartget_RPY();//遥控信号的转换
-	Quad_THR = (int16_t)(PWM_Input_CH3); //将通道3 输入做为油门量
 	//--------计算PWM输出---------
 	Roll_Pitch_Yaw_AnglePID( Target_Roll/10.0f , Target_Pitch/10.0f , Target_Yaw);
 	
@@ -286,8 +285,6 @@ void Mode_Level_Lock(void)
 void Mode_Hold_Position(void)
 {
 //GPS定点
-	// Get_Tartget_RPY();//遥控信号的转换
-	// Quad_THR = (int16_t)(PWM_Input_CH3); //将通道3 输入做为油门量
 	// //-------------定点飞行------------	
 	// //xiang：定点飞行模式除了添加了这一段代码，其他的和平衡模式一样；而这一段代码主要和GPS有关。
 	// if(Home_Ready)
@@ -305,7 +302,7 @@ void Mode_Hold_Position(void)
 	// 	 Position_Hold_Reset();
 	// }
 	// //--------通过PID计算PWM输出-------
-	// if(PWM_Input_CH3 > (int16_t)(MINTHROTTLE+(MAXTHROTTLE-MINTHROTTLE)/10))
+	// if(Quad_THR > (int16_t)(MINTHROTTLE+(MAXTHROTTLE-MINTHROTTLE)/10))
 	// {
 	// 	//遥控器油门大于10% 定高才会起作用，防止误动作引起电机转动
 	// 	Quad_THR += Height_PID(Tartget_hight);
@@ -348,14 +345,12 @@ void Mode_Hold_Position(void)
   Interval_dt = (float)(now_time - last_call_us)/1000000.0f;//s
   last_call_us = now_time;
 	//以下部分为定高(Z轴)
-	Quad_THR = (int16_t)PWM_Input_CH3; //将通道3 输入做为油门量
 	
-	Get_Tartget_RPY();//遥控信号的转换
 //	IMU_Roll += 2.0;
 
 //	Roll_Pitch_Yaw_AnglePID( Target_Roll/10.0f , Target_Pitch/10.0f , Target_Yaw);
 
-	if (PWM_Input_CH3 > (int16_t)(MINTHROTTLE + (MAXTHROTTLE - MINTHROTTLE) / 10))
+	if (Quad_THR > (int16_t)(MINTHROTTLE + (MAXTHROTTLE - MINTHROTTLE) / 10))
 	{ //遥控器油门大于10% 定高才会起作用，防止误动作引起电机转动
 	    Quad_THR += Height_PID(Targe_high);
 	}
@@ -376,7 +371,7 @@ void Mode_Hold_Position(void)
 	pidSet(&Position_X_Speed,3, 0.0, 0.01);
 	pidSet(&Position_Y_Hold, 1, 0, 0.00);
 	pidSet(&Position_Y_Speed, 3, 0.0, 0.01);
-	if (PWM_Input_CH3 > (int16_t)(MINTHROTTLE + (MAXTHROTTLE - MINTHROTTLE) / 10))
+	if (Quad_THR > (int16_t)(MINTHROTTLE + (MAXTHROTTLE - MINTHROTTLE) / 10))
 	{ //遥控器油门大于10% 定点才会起作用，防止误动作引起电机转动
 		if((Target_Roll > (int16_t)-30)&&(Target_Roll < (int16_t)30))
 		{
@@ -490,7 +485,6 @@ void Mode_Hold_Position(void)
 		  pidReset(&Position_X_Speed);
 		  pidReset(&Position_Y_Hold);
 		  pidReset(&Position_Y_Speed);
-	    Quad_THR = (int16_t)(PWM_Input_CH3);
 		  Position_X_MoveErr=0;
 			Position_X_SpeedErr=0;
 		  Position_Y_MoveErr=0;
@@ -545,12 +539,10 @@ void Mode_Landing(void)
     static uint32_t Land_lasttime=1;//不要初始化为0，lasttime==0是一个判断条件
 
     // Quad_THR = Default_Throttle;
-    Quad_THR = (int16_t)(PWM_Input_CH3); //将通道3 输入做为油门量
 
-    Get_Tartget_RPY(); //遥控信号转换为目标rpy
     Roll_Pitch_Yaw_AnglePID(Target_Roll / 10.0f, Target_Pitch / 10.0f, Target_Yaw);
 
-	if(PWM_Input_CH3 > (int16_t)(MINTHROTTLE+(MAXTHROTTLE-MINTHROTTLE)/10))//遥控器油门大于10% 定高才会起作用，防止误动作引起电机转动
+	if(Quad_THR > (int16_t)(MINTHROTTLE+(MAXTHROTTLE-MINTHROTTLE)/10))//遥控器油门大于10% 定高才会起作用，防止误动作引起电机转动
 	{
 		//监测是否落地或近地
 		if (altitude <= 0.15f)
@@ -618,13 +610,9 @@ void Mode_Auto_High(void)
 	// Quad_THR = Default_Throttle;//注意：如果油门用默认值的话，为了防止意外，所以需要ch3的输出大于一个值才定高，
 								//因为一般人的逻辑是四轴失控了就马上调小油门而不是切模式
 								//设置油门三个档位，最大档自动起飞，中档自动降落，小档关闭输出
-	Quad_THR = (int16_t)PWM_Input_CH3; //将通道3 输入做为油门量
-	
-	Get_Tartget_RPY();//遥控信号的转换
-
 	Roll_Pitch_Yaw_AnglePID( Target_Roll/10.0f , Target_Pitch/10.0f , Target_Yaw);
 
-	if (PWM_Input_CH3 > (int16_t)(MINTHROTTLE + (MAXTHROTTLE - MINTHROTTLE) / 10))
+	if (Quad_THR > (int16_t)(MINTHROTTLE + (MAXTHROTTLE - MINTHROTTLE) / 10))
 	{ //遥控器油门大于10% 定高才会起作用，防止误动作引起电机转动
 	    Quad_THR += Height_PID(Tartget_hight);
 	}

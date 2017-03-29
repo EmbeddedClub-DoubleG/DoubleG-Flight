@@ -44,8 +44,8 @@
 #define Remote_Config_Enable    1
 
 //xiang:这是我自己加的。这一段判断使用的是什么上位机来进行条件编译
-#define Yingzhang_GCS 0
-#define Captain_GCS 1
+#define Yingzhang_GCS 1
+#define Captain_GCS 0
 #define SerialDebug 0//update20161227:增加串口调试条件编译
 
 #endif

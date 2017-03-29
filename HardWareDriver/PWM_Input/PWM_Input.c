@@ -172,10 +172,10 @@ void EXTI0_IRQHandler(void)
 		} else{
 			pwmin_temp = CH6.FallingTime - CH6.RisingTime;//T2-T1
 		}
+		RC_data[5]	= PWM_Input_CH6;
 		if((pwmin_temp>(uint32_t)PWM_Input_MIN) && (pwmin_temp<(uint32_t)PWM_Input_MAX))
 		{
 			PWM_Input_CH6 = pwmin_temp;
-			RC_data[5]	= PWM_Input_CH6;
 		}
 	}
 	EXTI->PR=1<<0;  //清除中断标志位  
@@ -184,6 +184,7 @@ void EXTI0_IRQHandler(void)
 //中断线1 的中断程序
 void EXTI1_IRQHandler(void)
 {
+//TODO: 在接收不到遥控器信号的时候，不应该保持遥控器输入为前一次的输入，应该进入紧急降落模式（使用gps回到home地点并降落）
 	uint32_t pwmin_temp;
 	if( GPIOC->IDR & 0x0002){ 
 		CH5.RisingTime = micros();
@@ -195,11 +196,10 @@ void EXTI1_IRQHandler(void)
 		} else{
 			pwmin_temp = CH5.FallingTime - CH5.RisingTime;
 		}
-		
+		RC_data[4]	= PWM_Input_CH5;
 		if((pwmin_temp>(uint32_t)PWM_Input_MIN) && (pwmin_temp<(uint32_t)PWM_Input_MAX))
 		{
 			PWM_Input_CH5 = pwmin_temp;
-			RC_data[4]	= PWM_Input_CH5;
 		}
 		//Set_PWMOuput_CH5(PWM_Input_CH5);
 	}
@@ -220,11 +220,13 @@ void EXTI2_IRQHandler(void)
 		} else{
 			pwmin_temp = CH4.FallingTime - CH4.RisingTime;
 		}
-		
+		RC_data[3]	= PWM_Input_CH4;
 		if((pwmin_temp>(uint32_t)PWM_Input_MIN) && (pwmin_temp<(uint32_t)PWM_Input_MAX))
 		{
 			PWM_Input_CH4 = pwmin_temp - PWM_Offset_Yaw + 1500;
-			RC_data[3]	= PWM_Input_CH4;
+		}
+		else{
+			PWM_Input_CH4 = 1500;
 		}
 		//Set_PWMOuput_CH4(PWM_Input_CH4);
 	}
@@ -245,11 +247,10 @@ void EXTI3_IRQHandler(void)
 		} else{
 			pwmin_temp = CH3.FallingTime - CH3.RisingTime;
 		}
-		
+		RC_data[2]	= PWM_Input_CH3;
 		if((pwmin_temp>(uint32_t)PWM_Input_MIN) && (pwmin_temp<(uint32_t)PWM_Input_MAX))
 		{
 			PWM_Input_CH3 = pwmin_temp;
-			RC_data[2]	= PWM_Input_CH3;
 		}
 		//Set_PWMOuput_CH3(PWM_Input_CH3);
 	}
@@ -270,11 +271,13 @@ void EXTI4_IRQHandler(void)
 		} else{
 			pwmin_temp = CH2.FallingTime - CH2.RisingTime;
 		}
-		
+		RC_data[1]	= PWM_Input_CH2;
 		if((pwmin_temp>(uint32_t)PWM_Input_MIN) && (pwmin_temp<(uint32_t)PWM_Input_MAX))
 		{
 			PWM_Input_CH2 = pwmin_temp - PWM_Offset_Pitch + 1500;
-			RC_data[1]	= PWM_Input_CH2;
+		}
+		else{
+		    PWM_Input_CH2 = 1500;
 		}
 		//Set_PWMOuput_CH2(PWM_Input_CH2);
 	}
@@ -300,11 +303,13 @@ void EXTI9_5_IRQHandler(void)
 		} else{
 			pwmin_temp = CH1.FallingTime - CH1.RisingTime;
 		}
-		
+		RC_data[0]	= PWM_Input_CH1;
 		if((pwmin_temp>(uint32_t)PWM_Input_MIN) && (pwmin_temp<(uint32_t)PWM_Input_MAX))
 		{
 			PWM_Input_CH1 = pwmin_temp - PWM_Offset_Roll + 1500;
-			RC_data[0]	= PWM_Input_CH1;
+		}
+		else{
+		    PWM_Input_CH1 = 1500;
 		}
 	}
 	EXTI->PR=1<<5;  //清除中断标志位 

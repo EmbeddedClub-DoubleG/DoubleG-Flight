@@ -265,8 +265,8 @@ void UART1_ReportIMUMotion(float yaw,float pitch,float roll,
 	char data_to_send[91]={0};
 	int32_t data[15];
 	data[0] = (int32_t)(Math_fConstrain(yaw, -180.00f, 180.00f) * 100);
-	data[1] = (int32_t)(Math_fConstrain(pitch, -180.00f, 180.00f) * 100);
-	data[2] = (int32_t)(Math_fConstrain(roll, -180.0f, 180.0f) * 100);
+	data[1] = (int32_t)(Math_fConstrain(roll, -180.00f, 180.00f) * 100);
+	data[2] = (int32_t)(Math_fConstrain(pitch, -180.0f, 180.0f) * 100);
 	data[3] = (int32_t)(Math_fConstrain(ax, -99999.0f, 999999.0f) * 1);
 	data[4] = (int32_t)(Math_fConstrain(ay, -99999.0f, 999999.0f) * 1);
 	data[5] = (int32_t)(Math_fConstrain(az, -99999.0f, 999999.0f) * 1);

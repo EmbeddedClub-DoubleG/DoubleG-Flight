@@ -353,19 +353,25 @@ void GCS_GetCommand(unsigned char PC_comm)//xiang：注意：这个函数是针�
 				    Mag_minx, Mag_miny, Mag_minz); //发送磁力计标定值
 		    break;
 		//读取上位机控制命令
+		//ch1增加往右，ch2增加往前，ch4增加往右
 		case 0xc1:		    GCSControl_CH2 = 35;			break;//前进
 		case 0xc2:		    GCSControl_CH2 = -35;		    break;//后退
 		case 0xc3:		    GCSControl_CH1 = -35;		    break;//左倾
 		case 0xc4:		    GCSControl_CH1 = 35;		    break;//右倾
-		case 0xc5:		    GCSControl_CH4 -= 1;		    break;//左转
-		case 0xc6:		    GCSControl_CH4 += 1;		    break;//右转
+		case 0xc5:		    GCSControl_CH4 = -35;		    break;//左转
+		case 0xc6:		    GCSControl_CH4 = 35;		    break;//右转
 		case 0xc7:
 		    GCSControl_CH1 = 0;
 		    GCSControl_CH2 = 0;
+		    GCSControl_CH3_Accumulate = 0;
+		    GCSControl_CH4 = 0;
 		    break;
+		case 0xc8:		    GCSControl_CH3_Accumulate = 0.1;		    break; //加油门
+		case 0xc9:		    GCSControl_CH3_Accumulate = -0.1;		    break; //减油门
+
 		case 0x81:		    Camera_Routine();		    break;   //发摄像头采集图像
-		case 0xc8:		    Quadrotor_Mode = Quad_Take_Of;		    break;
-		case 0xc9:		    Quadrotor_Mode = Quad_Landing;		    break;
+		case 0xd1:		    Quadrotor_Mode = Quad_Take_Of;		    break;
+		case 0xd2:		    Quadrotor_Mode = Quad_Landing;		    break;
 	}
 }
 #endif
