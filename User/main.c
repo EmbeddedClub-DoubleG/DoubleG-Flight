@@ -83,6 +83,7 @@ int main(void)
 		Quadrotor_Mode = Quad_ESC_Cal;//四轴状态 = 正在校准ESC
 	}
 
+    MS561101BA_init();
 	Ultrasonic_initial(); //初始化 超声波测距仪
 	Initial_Quadrotor_Math(); //初始化 四轴姿态PID参数
 

@@ -1,9 +1,7 @@
 #ifndef _UART4_H
 #define _UART4_H
-/*******************************INCLUDES******************************/
+
 #include "stm32f4xx.h"
-#include <stdio.h>
-#include <stdarg.h>
 
 #define  UART4_RECEIVE_BUFSIZE     2000
 

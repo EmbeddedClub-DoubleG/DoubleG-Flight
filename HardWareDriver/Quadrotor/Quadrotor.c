@@ -1,10 +1,19 @@
 #include "Quadrotor.h"
 #include "Fmath.h"
-// #include "math.h"
 #include "GPS.h"
 #include "GCS_Protocol.h"
 #include "Quad_PID.h"
 #include "Target.h"
+#include "PWM_Output.h"
+#include "IMU.h"
+#include "fly_config.h"
+#include "AT45DB.h"
+#include "PWM_Input.h"
+#include "LED.h"
+#include "flow.h"
+#include "AltitudeFilter.h"
+#include "delay.h"
+#include "pid.h"
 
 volatile uint8_t  Fly_Mode = default_quad; //飞行器的架构，默认十字四轴，见fly_config.h
 volatile int16_t  Yaw_DIRECT = 1;//航向是否取反
@@ -325,7 +334,7 @@ void Mode_Hold_Position(void)
 //营长:以下代码是我用光流模块写的悬停
 	float Output = 0;
 	float Position_SpeedTarget=0;
-	float Position_MoveTarget=0;
+	// float Position_MoveTarget=0;
 	static float Position_X_MoveErr=0,Position_X_SpeedErr=0;
 	static float Position_Y_MoveErr=0,Position_Y_SpeedErr=0;
 	static uint32_t last_call_us = 0;
@@ -607,9 +616,7 @@ void Mode_Take_Of(void)
 *******************************************************************************/
 void Mode_Auto_High(void)
 {
-	// Quad_THR = Default_Throttle;//注意：如果油门用默认值的话，为了防止意外，所以需要ch3的输出大于一个值才定高，
-								//因为一般人的逻辑是四轴失控了就马上调小油门而不是切模式
-								//设置油门三个档位，最大档自动起飞，中档自动降落，小档关闭输出
+	// Quad_THR = Default_Throttle;
 	Roll_Pitch_Yaw_AnglePID( Target_Roll/10.0f , Target_Pitch/10.0f , Target_Yaw);
 
 	if (Quad_THR > (int16_t)(MINTHROTTLE + (MAXTHROTTLE - MINTHROTTLE) / 10))

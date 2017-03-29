@@ -18,6 +18,7 @@
 #include "MS5611.h"
 #include "IMU.h"//update20161227:由于增加了超声波消除俯仰和横滚影响，所以使用了IMU_Roll和IMU_Pitch
 #include "AltitudeFilter.h"
+#include <math.h>
 
 //------------超声波驱动状态机--------------
 #define Ultra_ST_Started   0x01	  //启动测距

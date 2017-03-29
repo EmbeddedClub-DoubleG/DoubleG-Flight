@@ -1,8 +1,6 @@
 #ifndef  __CAMERA_H__
 #define  __CAMERA_H__
 
-#include <string.h>
-#include <stdio.h>
 #include "stm32f4xx.h"
 
 

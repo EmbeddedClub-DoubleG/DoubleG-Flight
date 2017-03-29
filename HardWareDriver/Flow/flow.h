@@ -1,6 +1,8 @@
 #ifndef __FLOW_H
 #define __FLOW_H
-#include "common.h"
+
+#include "stm32f4xx.h"
+
 //器件地址
 #define FLOW_ADDR  0x42
 //存储器宏定义，如果是2字节1个数据，低字节地低位，高字节高位

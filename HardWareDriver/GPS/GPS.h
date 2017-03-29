@@ -3,7 +3,6 @@
 
 #include "stm32f4xx.h"
 
-
 #define _X  1
 #define _Y  0
 

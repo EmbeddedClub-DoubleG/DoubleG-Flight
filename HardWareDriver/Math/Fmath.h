@@ -1,6 +1,7 @@
 #ifndef __FMATH_H
 #define __FMATH_H
 
+#include "stm32f4xx.h"
 
 #define PitchRollEXP  50   //0.5
 #define PitchRollRate 100  //1.0

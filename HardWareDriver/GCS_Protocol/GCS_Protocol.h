@@ -2,11 +2,9 @@
 #define __GCS_PRO_H
 
 #include "stm32f4xx.h"
-#include "Quadrotor.h"
-#include "GPS.h"
-#include "UART1.h"
-#include "Fmath.h"
 #include "fly_config.h"
+#include "pid.h"
+
 #define Gyro_init  0xE0
 #define High_init  0xE2
 #define HMC_calib  0xE1

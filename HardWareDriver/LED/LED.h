@@ -2,7 +2,6 @@
 #define __LED_H
 
 #include "stm32f4xx.h"
-#include "delay.h"
 
 #define Red     0
 #define Blue    1

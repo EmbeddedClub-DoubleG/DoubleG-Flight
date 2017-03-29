@@ -9,6 +9,11 @@
 */
 
 #include "IMU.h"
+#include <math.h>
+#include "MPU6500.h"
+#include "LSM303D.h"
+#include "delay.h"
+#include "AT45DB.h"
 
 const static float Quad_Offset_Roll = 0.0f;//由于电路板安装时的问题，可能导致组装好飞行器后mpu6050不是水平的，所以用这两个偏置来抵消，这两个数值是要自己试飞的时候一点点调的
 const static float Quad_Offset_Pitch = 0.0f;//这个不用管单位，去看上位机姿态解算的值大概估算一下，慢慢调，Quad_Offset_Roll数值变大机身往左方偏，Quad_Offset_Pitch数值变大往前方偏
@@ -132,7 +137,6 @@ void IMU_init(void)
     delay_ms(50);
     MPU6500_initialize();
     LSM303_Initial();
-    MS561101BA_init();
     // initialize quaternion
     q0 = 1.0f; //初始化四元数
     q1 = 0.0f;

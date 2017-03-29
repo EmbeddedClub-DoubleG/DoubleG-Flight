@@ -2,10 +2,6 @@
 #define __Quadrotor_H
 
 #include "stm32f4xx.h"
-#include "PWM_Output.h"
-#include "IMU.h"
-#include "pid.h"
-#include "fly_config.h"
 /*---------------------宏定义------------------------*/
 //飞行器飞行模式
 #define Quad_Manual			0x01//手动模式

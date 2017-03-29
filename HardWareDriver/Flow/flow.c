@@ -1,4 +1,8 @@
 #include "flow.h"
+#include "delay.h"
+#include "IOI2C.h"
+#include "Target.h"
+
 #define MOVAVG_SIZE  10	   //保存最近的十个数据进行平均滤波
 static float Dist_Xspeed_buffer[MOVAVG_SIZE] = {0};
 static float Dist_Yspeed_buffer[MOVAVG_SIZE] = {0};
@@ -126,7 +130,7 @@ void FLOW_getData(void)
 
 //	test[0] = (flowdata[23]<<8)|flowdata[22];
 //	test[1] = (flowdata[21]<<8)|flowdata[20];
-	if((((int16_t)(PWM_Input_CH1 - PWM_Input_Offset) > (int16_t)-35)&&((int16_t)(PWM_Input_CH1 - PWM_Input_Offset) < (int16_t)35))&&(((int16_t)(PWM_Input_CH2 - PWM_Input_Offset) > (int16_t)-35)&&((int16_t)(PWM_Input_CH2 - PWM_Input_Offset) < (int16_t)35)))
+	if(((Target_Roll > -35)&&(Target_Roll < 35))&&((Target_Pitch > -35)&&(Target_Pitch < 35)))
 	{
 		Xmove = Xmove + X_Speed*dt;
 		Ymove = Ymove + Y_Speed*dt;

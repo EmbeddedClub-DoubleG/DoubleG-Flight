@@ -1,6 +1,8 @@
 
 #include "LSM303D.h"
 #include "delay.h"
+#include "SPI3.h"
+#include "AT45DB.h"
 
 #define Buf_SIZE  10	   //保存最近 10组数据
 

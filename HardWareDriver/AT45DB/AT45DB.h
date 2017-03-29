@@ -2,6 +2,7 @@
 #define __AT45DB_H
 
 #include "stm32f4xx.h"
+#include "datamap.h"
 
 #define AT45DB_BUFFER_1_WRITE                 0x84 /* 写入第一缓冲区 */
 #define AT45DB_BUFFER_2_WRITE                 0x87 /* 写入第二缓冲区 */

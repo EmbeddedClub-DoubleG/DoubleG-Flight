@@ -1,6 +1,8 @@
 #ifndef __Quad_PID_H
 #define __Quad_PID_H
 
+#include "stm32f4xx.h"
+
 extern struct Quad_PID 
 				Stabilize_Roll,  // 横滚 PID
 				RollRate,		  // 横滚 角速率PID

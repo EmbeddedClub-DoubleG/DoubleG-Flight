@@ -14,6 +14,8 @@ PWM输入定义：
 #include "IMU.h"
 #include "Quadrotor.h"
 #include "PWM_Input.h"
+#include "AT45DB.h"
+#include "fly_config.h"
 
 int16_t PWM_Offset_Roll,PWM_Offset_Pitch,PWM_Offset_Yaw;
 float Target_Roll,Target_Pitch,Target_Yaw;//Target_Roll,Target_Pitch单位为 x/10=度

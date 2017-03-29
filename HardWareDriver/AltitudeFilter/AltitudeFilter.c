@@ -2,6 +2,8 @@
 #include"MS5611.h"
 #include"Ultrasonic.h"
 #include"IMU.h"
+#include <math.h>
+#include "delay.h"
 
 #define MOVAVG_SIZE 10
 const float  FiltAlt_Lowpass = 7.9577e-3;  //低通滤波系数 20hz

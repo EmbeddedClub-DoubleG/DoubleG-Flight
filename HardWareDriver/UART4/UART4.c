@@ -21,6 +21,9 @@ xaing：佟源祥代码中usart2用于和PC通信，usart3用于和摄像头连�
 #include "camera.h"
 #include <stdio.h>
 #include "UART1.h"
+#include <stdio.h>
+#include <stdarg.h>
+
 unsigned char Report_Buf[UART4_RECEIVE_BUFSIZE] = "";
 
 void Initial_UART4(uint32_t bound)

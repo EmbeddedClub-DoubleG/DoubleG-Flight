@@ -1,10 +1,7 @@
 #ifndef __UART1_H
 #define __UART1_H
 
-#include <stdio.h> 
-#include "Quadrotor.h"
 #include "stm32f4xx.h"
-#include "fly_config.h"
 
 //uart reicer flag
 #define b_uart_head  0x80

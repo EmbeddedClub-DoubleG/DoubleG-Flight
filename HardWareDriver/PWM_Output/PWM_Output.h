@@ -2,7 +2,6 @@
 #define __PWM_Output_H
 
 #include "stm32f4xx.h"
-#include "LED.h"
 
 
 //---------------PWM周期设置--------------------------

@@ -1,9 +1,7 @@
 #ifndef __MS5611_H
 #define __MS5611_H
 
-#include "IOI2C.h"
-#include "delay.h"
-
+#include "stm32f4xx.h"
 
 // addresses of the device CSB =0 
 #define MS5611_ADDR          0xEE     // default I2C address

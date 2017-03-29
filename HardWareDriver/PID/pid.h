@@ -4,7 +4,7 @@
 #define PID_TRUE  0xff
 #define PID_FALSE 0x00
 
-
+#include "stm32f4xx.h"
 
 struct Quad_PID{
 	float target;  // 目标值

@@ -15,11 +15,15 @@ UART1RXD  -->  PA10 (UART1-RXD)
 ------------------------------------
  */
 
-#include "common.h"
 #include "UART1.h"
 #include "USART1DMATX.h"
 #include "OSQMem.h"	
 #include <stdlib.h>
+#include <stdio.h> 
+#include "fly_config.h"
+#include "pid.h"
+#include "AT45DB.h"
+#include "common.h"
 
 extern u8 OSUSART1MemQ[OS_MEM_USART1_MAX];  			//空白内存块
 OSMEMTcb* OSQUSART1Index;

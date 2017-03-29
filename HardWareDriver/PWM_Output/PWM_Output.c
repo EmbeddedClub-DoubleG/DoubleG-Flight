@@ -23,6 +23,7 @@
 #include "Quadrotor.h"
 #include "fly_config.h"
 #include "Fmath.h"
+#include "LED.h"
 
 volatile uint8_t THROTTLE_LOCKed = 1; //电机锁定，不启动
 //舵机信号 更新请求，在每个PWM周期中置1，通过主程序判断该值来决定是否更新舵机输出，

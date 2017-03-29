@@ -2,6 +2,11 @@
 #include "pid.h"
 #include "Quadrotor.h"
 #include "IMU.h"
+#include "Fmath.h"
+#include "AltitudeFilter.h"
+#include <math.h>
+#include "GPS.h"
+#include "delay.h"
 
 struct Quad_PID 
 				Stabilize_Roll,  // 横滚 PID

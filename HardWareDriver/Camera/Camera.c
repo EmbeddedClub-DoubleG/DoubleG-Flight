@@ -36,6 +36,7 @@ CameraDemoApp()
 #include "USART1DMATX.h"
 #include "UART1.h"
 #include <stdio.h>
+#include <string.h>
 #define CLEAR_FRAME            1   	 //去掉返回图片数据携带的协议头和尾76 00 32 00
 
 #define ID_SERIAL_NUM       1        //序号在数组的所在位置

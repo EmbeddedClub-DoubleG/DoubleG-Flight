@@ -1,9 +1,8 @@
 #ifndef __IMU_H
 #define __IMU_H
 
-#include "common.h"
+#include "stm32f4xx.h"
 
-#include <math.h>
 #define M_PI  (float)3.1415926535
 
 //解算后的姿态输出，供外部程序调用

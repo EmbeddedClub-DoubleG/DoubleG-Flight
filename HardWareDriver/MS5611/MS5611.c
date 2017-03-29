@@ -11,8 +11,9 @@ MS5611是气压计，用于测量高度
  */
 #include "MS5611.h"
 #include <math.h>
-#include "common.h"
 #include "AltitudeFilter.h"
+#include "IOI2C.h"
+#include "delay.h"
 
 #define MS5611Press_OSR  MS561101BA_OSR_4096  //气压采样精度
 #define MS5611Temp_OSR   MS561101BA_OSR_4096  //温度采样精度

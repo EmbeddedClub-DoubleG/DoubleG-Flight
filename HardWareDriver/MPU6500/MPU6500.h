@@ -1,9 +1,7 @@
 #ifndef __MPU6500_H
 #define __MPU6500_H
 
-#include "common.h"  //包含所有的驱动 头文件
-#include "SPI3.h"
-#include "delay.h"
+#include "stm32f4xx.h"
 
 #define MPU6500_CSH()  GPIO_SetBits(GPIOC, GPIO_Pin_8)
 #define MPU6500_CSL()  GPIO_ResetBits(GPIOC, GPIO_Pin_8)

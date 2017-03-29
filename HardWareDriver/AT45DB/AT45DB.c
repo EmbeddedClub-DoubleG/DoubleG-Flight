@@ -20,6 +20,9 @@
 
 #include "AT45DB.h"
 #include "common.h"
+#include "Quad_PID.h"
+#include "Target.h"
+#include "Quadrotor.h"
 
 volatile struct data_map Config;
 

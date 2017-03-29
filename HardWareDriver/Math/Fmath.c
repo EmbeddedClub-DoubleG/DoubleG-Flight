@@ -1,5 +1,3 @@
-
-#include "stm32f4xx.h"
 #include "Fmath.h"
 #include "fly_config.h"
 

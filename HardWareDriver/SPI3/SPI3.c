@@ -1,6 +1,5 @@
-
-#include "common.h"
-
+// #include "common.h"
+#include "SPI3.h"
 
 /**************************实现函数********************************************
 *函数原型:		void AT45db161_SPI_Configuration(void)

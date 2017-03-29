@@ -1,8 +1,11 @@
 #ifndef __Target_H
 #define __Target_H
 
+#include "stm32f4xx.h"
+
 extern float  Target_Roll,Target_Pitch,Target_Yaw;
 extern volatile float Quad_THR;
+extern int16_t PWM_Offset_Roll,PWM_Offset_Pitch,PWM_Offset_Yaw;
 
 #if Yingzhang_GCS
 //上位机控制四轴目标角度相关变量

@@ -7,6 +7,15 @@
 
 #include "GCS_Protocol.h"
 #include "USART1DMATX.h"
+#include <stdio.h>
+#include "GPS.h"
+#include "UART1.h"
+#include "Fmath.h"
+#include "PWM_Input.h"
+#include "PWM_Output.h"
+#include "Quad_PID.h"
+#include "Quadrotor.h"
+#include "common.h"
 
 //xiang:如果要改成自己的上位机和数据协议，注意把每个函数都在项目中查找一下看哪里调用了，最好是直接把这个函数注释掉看哪里报错
 
