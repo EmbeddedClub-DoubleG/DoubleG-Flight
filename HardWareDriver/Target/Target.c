@@ -49,7 +49,7 @@ void Get_Throttle(void)
 	}
 	else
 	{
-	    Quad_THR = MINTHROTTLE;
+	    Quad_THR = 1000;
 	}
 	#if Yingzhang_GCS
 	GCSControl_CH3 += GCSControl_CH3_Accumulate;
