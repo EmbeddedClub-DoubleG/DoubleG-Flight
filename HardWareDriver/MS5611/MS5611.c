@@ -236,11 +236,11 @@ void MS561101BA_get_altitude(void){
 	//计算相对于 上电时的位置的 高度值 。
 	newAltitude = 4433000.0 * (1 - pow((MS5611_Pressure / MS5611_Alt_offset_Pa), 0.1903));
 	newAltitude = newAltitude + MS5611_Alt_Offset_cm ;  //加偏置
-	
-	MS5611_Altitude = MS561101BA_getAvg(Alt_buffer,MOVAVG_SIZE);
+	//应该先低通还是先均值？
 	MS5611_Altitude = MS5611_Altitude +	  //低通滤波   20hz
 	 	(MS5611_ALT_Update_Interval/(MS5611_ALT_Update_Interval + MS5611_Lowpass))*(newAltitude - MS5611_Altitude);
 	MS561101BA_NewAlt(MS5611_Altitude);
+	MS5611_Altitude = MS561101BA_getAvg(Alt_buffer,MOVAVG_SIZE);
 	MS5611BA_Get_D();
 }
 

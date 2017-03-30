@@ -179,11 +179,11 @@ void Ultrasonic_Routine(void){
 			}
 			Distance *= (float)cos(fabs(IMU_Roll * angle));//fabs是取绝对值//update20161227:消除角度影响；这个代码需不需要加有争议，因为cos计算量大，但是收益不高
 			Distance *= (float)cos(fabs(IMU_Pitch * angle));
-
-			Ultra_Distance = Ultrasonic_getAvg(Dist_buffer,MOVAVG_SIZE);
+			//应该先低通还是先均值？
 			Ultra_Distance = Ultra_Distance + //低通滤波   20hz
 					 (Ultra_dt / (Ultra_dt + Ultra_Lowpass)) * (Distance - Ultra_Distance);
 			Ultrasonic_NewDis(Ultra_Distance);
+			Ultra_Distance = Ultrasonic_getAvg(Dist_buffer,MOVAVG_SIZE);
 			if(++Ultra_Healthy>20)
 			    Ultra_Healthy = 20;
 			if(++Ultra_valid>MOVAVG_SIZE){ //连续MOVAVG_SIZE次超声波高度有效，那么应该用它来修正气压高度的漂移
