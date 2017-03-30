@@ -33,6 +33,10 @@ void GCS_Upload(void);
 void GCS_GetCommand(unsigned char PC_comm);	
 #endif
 
+#if SerialDebug
+void GCS_GetCommand(unsigned char PC_comm);
+#endif
+
 void Remote_Command(void);
 /**************************实现函数********************************************
 *函数原型:		int main(void)
@@ -40,9 +44,7 @@ void Remote_Command(void);
 *******************************************************************************/
 int main(void)
 {
-#if Captain_GCS|Yingzhang_GCS
 	unsigned char PC_comm; //PC发送的命令
-#endif
 	uint32_t systemTimeNow;//update20170113
 	/* 配置系统时钟为120M 使用外部8M晶体+PLL*/      
 	// SystemInit();//系统会自动调用的，所以这里不需要手动调用
@@ -142,6 +144,8 @@ int main(void)
 
 			system_micrsecond=micros();
 		}
+		if((PC_comm=UART1_CommandRoute())!=0xff)
+			GCS_GetCommand(PC_comm);// 处理PC 发送的命令
 #endif
 	}//主循环 while(1) 结束
 }//main	
@@ -372,6 +376,27 @@ void GCS_GetCommand(unsigned char PC_comm)//xiang：注意：这个函数是针�
 		case 0x81:		    Camera_Routine();		    break;   //发摄像头采集图像
 		case 0xd1:		    Quadrotor_Mode = Quad_Take_Of;		    break;
 		case 0xd2:		    Quadrotor_Mode = Quad_Landing;		    break;
+	}
+}
+#elif SerialDebug
+void GCS_GetCommand(unsigned char PC_comm)
+{
+	switch(PC_comm)
+	{
+		case Gyro_init: //读取陀螺仪零偏
+		    MPU6500_InitGyro_Offset();
+		    // Config.ACC_z_zero = acc_vector;
+		    Config.ACC_z_zero += Motion_Accz;
+		    AT45DB_Write_config();
+		    break;
+		case 0x01:		    UART1_Report_ACCZZero();		    break;
+		case 0x02:
+		    Motion_Velocity_Z = Filter_Altitude_D/100.0f;
+		    Position_Z = Filter_Altitude/100.0f;
+		    break;
+		case 0x03:
+		    FiltAlt_debug_flag = 0;
+		    break;
 	}
 }
 #endif

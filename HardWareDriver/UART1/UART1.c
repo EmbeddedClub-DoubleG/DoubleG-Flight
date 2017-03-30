@@ -619,6 +619,42 @@ void USART1_IRQHandler(void)//xiang：注意：这个函数是针对自己写的
 		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
 	}
 }
+#elif SerialDebug
+void USART1_IRQHandler(void)
+{
+	unsigned char data;
+	if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
+	{
+		data=USART_ReceiveData(USART1);
+		if(data==0xa5)//xiang:0xa5是数据开头标识的第一个字节
+		{ 
+			RC_Flag|=b_uart_head;//xiang：标记已经接收到0xa5
+			rx_buffer[rx_wr_index++]=data;//xiang：这个是为了如果下一个字节如果不是0x5a则，这个字节作为数据存储
+		}
+		else if(data==0x5a)//xiang:0xa5是数据开头标识的第二个字节
+		{
+			if(RC_Flag&b_uart_head)//xiang：如果已经收到0xa5，则从头开始接收数据
+			{
+				rx_wr_index=0;
+				RC_Flag&=~b_rx_over;//xiang：reset over标志位
+			}
+			else
+				{ rx_buffer[rx_wr_index++]=data; }
+			RC_Flag&=~b_uart_head;//xiang：reset head标志位
+		}
+		else
+		{
+			rx_buffer[rx_wr_index++]=data;
+			RC_Flag&=~b_uart_head;
+			if(rx_wr_index==rx_buffer[0])
+				RC_Flag|=b_rx_over;
+		}
+		if(rx_wr_index==RX_BUFFER_SIZE)
+			{ rx_wr_index--; }
+		/* Clear the USART1 RX interrupt */
+		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
+	}
+}
 #endif
 
 #if Captain_GCS
@@ -647,6 +683,16 @@ return 0xff; //没有收到上位机的命令，或者是命令效验没有通�
 }
 #elif Yingzhang_GCS
 unsigned char UART1_CommandRoute(void)//xiang：注意：这个函数是针对自己写的上位机的，如果要用captain上位机，就用上面那个函数
+{
+	if(RC_Flag&b_rx_over)
+	{
+		RC_Flag&=~b_rx_over;
+		return rx_buffer[1];
+	}
+	return 0xff; //没有收到上位机的命令，或者是命令效验没有通过
+}
+#elif SerialDebug
+unsigned char UART1_CommandRoute(void)
 {
 	if(RC_Flag&b_rx_over)
 	{

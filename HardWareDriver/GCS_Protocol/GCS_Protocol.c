@@ -66,6 +66,15 @@ void UART1_Monitor_AutoHigh(void)//单位cm
 }
 #endif
 
+#if SerialDebug
+void UART1_Report_ACCZZero(void)
+{
+    char string_to_send[25] = {0};
+    sprintf(string_to_send, "ACC_Z_Zero:%f\r\n", Config.ACC_z_zero);
+	UART1_Put_String((unsigned char *)string_to_send);
+}
+#endif
+
 #if Captain_GCS
 /**************************实现函数********************************************
 *函数原型:	void UART1_ReportIMU(int16_t yaw,int16_t pitch,int16_t roll,int16_t alt,int16_t tempr,int16_t press,int16_t IMUpersec)

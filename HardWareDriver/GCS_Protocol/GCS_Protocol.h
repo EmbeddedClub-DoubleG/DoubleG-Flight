@@ -36,6 +36,9 @@ void UART1_ReportIMUMotion(float yaw, float pitch, float roll,
 		     float alt, float tempr, float press);
 void UART1_ReportHMC(int16_t maxx, int16_t maxy, int16_t maxz, int16_t minx, int16_t miny, int16_t minz);
 void UART1_Report_PWMInOut(void);
+
+#elif SerialDebug
+void UART1_Report_ACCZZero(void);
 #endif
 
 extern void UART1_ReportSysteminfo(
