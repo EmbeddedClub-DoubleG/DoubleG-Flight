@@ -144,6 +144,7 @@ void Ultrasonic_Routine(void){
 	static uint32_t HaltTime = 0;
 	static int16_t Ultra_valid = 0;
 	float Distance;
+	double angle = M_PI / 180;
 	//计算在当前温度下 对应的空气中声音的传播速度
 	/*
 	音速与介质的密度和弹性性质有关，因此也随介质的温度、
@@ -169,15 +170,15 @@ void Ultrasonic_Routine(void){
 			Sound_Speed = (332.0f+ (MS5611_Temperature/100.0f)*0.607f);//计算声速
 			Distance = (float)(Ultra_Low_time - Ultra_High_time);  //时间   单位 us
 			Distance = (Distance/2000000.0f); //计算 声音走一半，需要的时间，单位 S
-			Distance = (Distance) * Sound_Speed; //距离			
+			Distance = (Distance) * Sound_Speed; //距离
 
-			if ((Distance > (float)Max_Range) || (Distance < 0.01f)) //update20161227:把判断条件从<0改为<0.01
+			if ((Distance > (float)Max_Range) || (Distance < 0.01f) || IMU_Roll * angle > 15 || IMU_Pitch * angle > 15) //update20161227:把判断条件从<0改为<0.01
 			{
 			    Ultra_Stauts = Ultra_ST_Error; //超时了，错误
 			    break; //超过量程了，这次测量无效。
 			}
-			Distance *= (float)cos(fabs(IMU_Roll * M_PI / 180));//fabs是取绝对值//update20161227:消除角度影响；这个代码需不需要加有争议，因为cos计算量大，但是收益不高
-			Distance *= (float)cos(fabs(IMU_Pitch * M_PI / 180));
+			Distance *= (float)cos(fabs(IMU_Roll * angle));//fabs是取绝对值//update20161227:消除角度影响；这个代码需不需要加有争议，因为cos计算量大，但是收益不高
+			Distance *= (float)cos(fabs(IMU_Pitch * angle));
 
 			Ultra_Distance = Ultrasonic_getAvg(Dist_buffer,MOVAVG_SIZE);
 			Ultra_Distance = Ultra_Distance + //低通滤波   20hz
