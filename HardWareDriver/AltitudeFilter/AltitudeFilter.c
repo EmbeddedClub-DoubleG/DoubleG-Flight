@@ -13,6 +13,7 @@ float ALT_Update_Interval = 0.0; //两次高度测量，之间的时间间隔
 float D2_Alt = 0;//对高度去两次微分
 float FiltAlt_Buff[MOVAVG_SIZE] = {0};
 uint8_t FiltAlt_index = 0;
+float FiltAlt_debug_flag = 0;
 
 void Altitude_Get_D(void);
 void FiltAlt_NewAlt(float val);
@@ -28,7 +29,7 @@ void Get_Filter_Altitude(void)
             evaluateAltitude = (Filter_Altitude_D + D2_Alt) * ALT_Update_Interval + Filter_Altitude;
             if ((evaluateAltitude + 5.0f) >= altitude && (evaluateAltitude - 5.0f) <= altitude)
             {
-                altitude = 90.0f * Ultra_Distance + 10.0f * Position_Z;
+			    FiltAlt_debug_flag++;
             }
             else
             {
@@ -41,6 +42,7 @@ void Get_Filter_Altitude(void)
                 {
                     altitude = 1.0f * Ultra_Distance + 99.0f * Position_Z;
                 }
+                FiltAlt_debug_flag -= 50;
             }
             Ultra_ALT_Updated = 0;
         }
