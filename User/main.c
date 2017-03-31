@@ -134,14 +134,10 @@ int main(void)
 		//上传数据给串口调试助手
 		if((micros()-system_micrsecond)>upload_time)//单位us
 		{
-			char string_to_send1[80]={0};
-			char string_to_send2[80]={0};
-
-			sprintf(string_to_send1, "\r\nPitch:%f Target:%f Y_Speed:%d Ymove:%f \r\n",IMU_Pitch,-Target_Pitch,Y_Speed,Ymove);
-			 UART1_Put_String((unsigned char *)string_to_send1);
-			sprintf(string_to_send2, "\r\nRoll:%f Target:%f X_Speed:%d Xmove:%f \r\n",IMU_Roll,Target_Roll,X_Speed,Xmove);
-			 UART1_Put_String((unsigned char *)string_to_send2);
-
+		    char string_to_send[70] = {0};
+		    sprintf(string_to_send, "Alt:%.2f\tUlt:%.2f\tAltD:%.2f\tflg:%.0f\teva:%.2f\r\n",
+			    Filter_Altitude, Ultra_Distance * 100.0f, Filter_Altitude_D,FiltAlt_debug_flag,evaluateAltitude);
+		    UART1_Put_String((unsigned char *)string_to_send);
 			system_micrsecond=micros();
 		}
 		if((PC_comm=UART1_CommandRoute())!=0xff)

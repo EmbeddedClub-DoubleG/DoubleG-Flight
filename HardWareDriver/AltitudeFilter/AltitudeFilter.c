@@ -26,9 +26,11 @@ void Get_Filter_Altitude(void)
     {
         if (Ultra_ALT_Updated == 1)
         {
+            // evaluateAltitude = ((Motion_Velocity_dt * Motion_Accz + Motion_Velocity_Z) * Motion_Position_dt + Position_Z) * 100.0f;
             evaluateAltitude = (Filter_Altitude_D + D2_Alt) * ALT_Update_Interval + Filter_Altitude;
-            if ((evaluateAltitude + 5.0f) >= altitude && (evaluateAltitude - 5.0f) <= altitude)
+            if ((evaluateAltitude + 5.0f) >= Ultra_Distance * 100.0f && (evaluateAltitude - 5.0f) <= Ultra_Distance * 100.0f)
             {
+                altitude = 60.0f * Ultra_Distance + 40.0f * Position_Z;
 			    FiltAlt_debug_flag++;
             }
             else
@@ -40,7 +42,7 @@ void Get_Filter_Altitude(void)
                 }
                 else
                 {
-                    altitude = 1.0f * Ultra_Distance + 99.0f * Position_Z;
+                    altitude = 2.0f * Ultra_Distance + 98.0f * Position_Z;
                 }
                 FiltAlt_debug_flag -= 50;
             }
@@ -59,7 +61,9 @@ void Get_Filter_Altitude(void)
         else
             return;
     }
-    Filter_Altitude = Filter_Altitude + (ALT_Update_Interval / (ALT_Update_Interval + FiltAlt_Lowpass)) * (altitude - Filter_Altitude);
+    // Filter_Altitude = Filter_Altitude + (ALT_Update_Interval / (ALT_Update_Interval + FiltAlt_Lowpass)) * (altitude - Filter_Altitude);
+    Filter_Altitude = altitude;
+    Position_Z = Filter_Altitude / 100.0f;
     FiltAlt_NewAlt(altitude);
     Altitude_Get_D();
 }
@@ -85,7 +89,7 @@ void Altitude_Get_D(void)
 	    D = D +	(ALT_Update_Interval / (ALT_Update_Interval + FiltAlt_Lowpass)) * (temp - D);
 	    D2_Alt = (D - D2_Alt);
 	}
-	Filter_Altitude_D = 0.75f * D + 25.0f * Motion_Velocity_Z;
+	Filter_Altitude_D = 0.90f * D + 10.0f * Motion_Velocity_Z;
 	Motion_Velocity_Z = Filter_Altitude_D / 100.0f;
 }
 
